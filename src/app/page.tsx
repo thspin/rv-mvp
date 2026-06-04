@@ -74,14 +74,7 @@ export default function Login() {
         setIsLoading(false);
         return;
       }
-      router.refresh();
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const user = await getCurrentUserAsync();
-      if (user) {
-        redirectUser(user);
-      } else {
-        setIsLoading(false);
-      }
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing in:', error);
       setAuthError('Error al iniciar sesion');

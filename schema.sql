@@ -90,6 +90,19 @@ ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE athletes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
+-- Funcion helper para verificar admin (evita recursion infinita en RLS)
+CREATE OR REPLACE FUNCTION public.is_admin(uid uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM athletes
+    WHERE athletes.user_id = uid AND athletes.role = 'admin'
+  );
+$$;
+
 -- 1. Politicas para TEAMS
 -- Lectura publica para usuarios autenticados
 CREATE POLICY "Permitir lectura de equipos a usuarios autenticados" 
@@ -102,10 +115,7 @@ CREATE POLICY "Permitir edicion de equipos solo a administradores"
 ON teams FOR ALL 
 TO authenticated 
 USING (
-    EXISTS (
-        SELECT 1 FROM athletes 
-        WHERE athletes.user_id = auth.uid() AND athletes.role = 'admin'
-    )
+    public.is_admin(auth.uid())
 );
 
 -- 2. Politicas para ATHLETES
@@ -115,10 +125,7 @@ ON athletes FOR SELECT
 TO authenticated 
 USING (
     user_id = auth.uid() 
-    OR EXISTS (
-        SELECT 1 FROM athletes 
-        WHERE athletes.user_id = auth.uid() AND athletes.role = 'admin'
-    )
+    OR public.is_admin(auth.uid())
 );
 
 -- Permitir que un usuario modifique su propio perfil o que un admin modifique todos
@@ -127,17 +134,11 @@ ON athletes FOR UPDATE
 TO authenticated 
 USING (
     user_id = auth.uid() 
-    OR EXISTS (
-        SELECT 1 FROM athletes 
-        WHERE athletes.user_id = auth.uid() AND athletes.role = 'admin'
-    )
+    OR public.is_admin(auth.uid())
 )
 WITH CHECK (
     user_id = auth.uid() 
-    OR EXISTS (
-        SELECT 1 FROM athletes 
-        WHERE athletes.user_id = auth.uid() AND athletes.role = 'admin'
-    )
+    OR public.is_admin(auth.uid())
 );
 
 -- Permitir inserts durante el primer registro (ej. getCurrentUserAsync crea el atleta)
@@ -154,11 +155,8 @@ CREATE POLICY "Permitir lectura de pagos propia o de admins"
 ON payments FOR SELECT 
 TO authenticated 
 USING (
-    athlete_email = (SELECT email FROM athletes WHERE user_id = auth.uid())
-    OR EXISTS (
-        SELECT 1 FROM athletes 
-        WHERE athletes.user_id = auth.uid() AND athletes.role = 'admin'
-    )
+    athlete_email = (SELECT email FROM athletes WHERE user_id = auth.uid() LIMIT 1)
+    OR public.is_admin(auth.uid())
 );
 
 -- Permitir inserciones a atletas (para simular reportes de pago) y administradores
@@ -166,9 +164,6 @@ CREATE POLICY "Permitir insercion de pagos a atletas y admins"
 ON payments FOR INSERT 
 TO authenticated 
 WITH CHECK (
-    athlete_email = (SELECT email FROM athletes WHERE user_id = auth.uid())
-    OR EXISTS (
-        SELECT 1 FROM athletes 
-        WHERE athletes.user_id = auth.uid() AND athletes.role = 'admin'
-    )
+    athlete_email = (SELECT email FROM athletes WHERE user_id = auth.uid() LIMIT 1)
+    OR public.is_admin(auth.uid())
 );
