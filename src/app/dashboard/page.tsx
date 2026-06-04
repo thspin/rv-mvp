@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUserAsync, getTeamAsync, leaveTeamAsync, Team, Athlete } from '@/lib/db';
+import { getCurrentUserAsync, getTeamAsync, leaveTeamAsync, updateAthleteProfileAsync, Team, Athlete } from '@/lib/db';
+import { createClient } from '@/lib/supabase/client';
 import Navbar from '@/components/Navbar';
 import {
   Users,
@@ -11,6 +12,7 @@ import {
   DollarSign,
   Heart,
   AlertTriangle,
+  Upload,
   ExternalLink,
   MapPin,
   Clock
@@ -21,6 +23,12 @@ export default function AthleteDashboard() {
   const [user, setUser] = useState<Athlete | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [certError, setCertError] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [uploadingCert, setUploadingCert] = useState(false);
 
   const loadData = async () => {
     const currentUser = await getCurrentUserAsync();
@@ -52,6 +60,77 @@ export default function AthleteDashboard() {
     if (confirmLeave) {
       await leaveTeamAsync(user.email);
       loadData();
+    }
+  };
+
+  const handleUploadReceipt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !receiptFile) {
+      setUploadError('Selecciona un archivo de comprobante.');
+      return;
+    }
+    setUploadingReceipt(true);
+    setUploadError('');
+    try {
+      const supabase = createClient();
+      const fileExt = receiptFile.name.split('.').pop();
+      const fileName = `${user.email.replace(/[@.]/g, '_')}_${Date.now()}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(fileName, receiptFile);
+      
+      if (uploadError) throw uploadError;
+      
+      await updateAthleteProfileAsync(user.email, {
+        payment_status: 'Pendiente_Verificacion',
+        payment_receipt_url: fileName,
+        payment_motivo_rechazo: undefined,
+      });
+      
+      setReceiptFile(null);
+      loadData();
+    } catch (error) {
+      console.error('Error uploading receipt:', error);
+      setUploadError('Error al subir el comprobante. Intenta nuevamente.');
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const handleUploadCert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !certFile) {
+      setCertError('Selecciona un archivo de apto medico.');
+      return;
+    }
+    setUploadingCert(true);
+    setCertError('');
+    try {
+      const supabase = createClient();
+      const fileExt = certFile.name.split('.').pop();
+      const fileName = `${user.email.replace(/[@.]/g, '_')}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('medical-certs')
+        .upload(fileName, certFile);
+      
+      if (uploadError) throw uploadError;
+      
+      await updateAthleteProfileAsync(user.email, {
+        apto_medico_status: 'pendiente_verificacion',
+        apto_medico_url: fileName,
+        apto_medico_motivo_rechazo: undefined,
+      });
+      
+      setCertFile(null);
+      loadData();
+    } catch (error) {
+      console.error('Error uploading certificate:', error);
+      setCertError('Error al subir el certificado. Intenta nuevamente.');
+    } finally {
+      setUploadingCert(false);
     }
   };
 
@@ -239,11 +318,29 @@ export default function AthleteDashboard() {
                   </div>
 
                   {(user.payment_status === 'Pendiente_Pago' || user.payment_status === 'Vencido') && (
-                    <div className="pt-4 border-t border-slate-100">
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 leading-relaxed text-center">
-                        La carga de comprobantes no esta disponible aun.
+                    <form onSubmit={handleUploadReceipt} className="pt-4 border-t border-slate-100 space-y-3">
+                      <label className="text-xs font-semibold text-slate-500 block">Cargar comprobante de pago</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            setReceiptFile(e.target.files?.[0] || null);
+                            setUploadError('');
+                          }}
+                          className="flex-grow bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2 text-sm text-slate-900 outline-none transition-all duration-200 file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!receiptFile || uploadingReceipt}
+                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-full shadow transition-all duration-150 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          {uploadingReceipt ? 'Subiendo...' : 'Enviar'}
+                        </button>
                       </div>
-                    </div>
+                      {uploadError && <p className="text-xs text-red-600 font-medium">{uploadError}</p>}
+                    </form>
                   )}
                 </div>
 
@@ -305,11 +402,29 @@ export default function AthleteDashboard() {
                   </div>
 
                   {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado') && (
-                    <div className="pt-4 border-t border-slate-100">
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 leading-relaxed text-center">
-                        La carga de apto medico no esta disponible aun.
+                    <form onSubmit={handleUploadCert} className="pt-4 border-t border-slate-100 space-y-3">
+                      <label className="text-xs font-semibold text-slate-500 block">Cargar apto medico (PDF/Imagen)</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            setCertFile(e.target.files?.[0] || null);
+                            setCertError('');
+                          }}
+                          className="flex-grow bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2 text-sm text-slate-900 outline-none transition-all duration-200 file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!certFile || uploadingCert}
+                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-full shadow transition-all duration-150 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          {uploadingCert ? 'Subiendo...' : 'Enviar'}
+                        </button>
                       </div>
-                    </div>
+                      {certError && <p className="text-xs text-red-600 font-medium">{certError}</p>}
+                    </form>
                   )}
                 </div>
 
