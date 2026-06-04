@@ -368,7 +368,7 @@ export default function AdminPage() {
                       <h3 className="font-semibold text-foreground">{athlete.name || "Sin nombre"}</h3>
                       <p className="text-sm text-muted-foreground">{athlete.email}</p>
                       {athlete.apto_medico_url && (
-                        <a href={athlete.apto_medico_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                        <a href={`/api/storage/medical-certs?filename=${athlete.apto_medico_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
                           Ver documento
                         </a>
                       )}
@@ -555,7 +555,7 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground mb-2">Atleta: {selectedAthlete.name}</p>
               <p className="text-sm text-muted-foreground mb-4">Metodo: {selectedAthlete.payment_method || "No especificado"}</p>
               {selectedAthlete.payment_receipt_url && (
-                <a href={selectedAthlete.payment_receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline block mb-4">
+                <a href={`/api/storage/receipts?filename=${selectedAthlete.payment_receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline block mb-4">
                   Ver comprobante
                 </a>
               )}
