@@ -10,6 +10,9 @@ export default function Login() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     checkSession();
@@ -55,6 +58,31 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Error signing in:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setAuthError('');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setAuthError(error.message);
+        setIsLoading(false);
+        return;
+      }
+      const user = await getCurrentUserAsync();
+      if (user) {
+        redirectUser(user);
+      } else {
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error signing in:', error);
+      setAuthError('Error al iniciar sesion');
       setIsLoading(false);
     }
   };
@@ -111,6 +139,36 @@ export default function Login() {
             </svg>
             {isLoading ? 'Conectando...' : 'Continuar con Google'}
           </button>
+
+          {/* EMAIL/PASSWORD LOGIN */}
+          <form onSubmit={handleEmailLogin} className="mt-4 space-y-3">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="password"
+              placeholder="Contrasena"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {authError && (
+              <p className="text-xs text-red-600">{authError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 px-6 bg-slate-900 text-white hover:bg-slate-800 font-semibold text-sm uppercase tracking-wide rounded-full shadow-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Ingresando...' : 'Iniciar sesion'}
+            </button>
+          </form>
 
           {/* DEMO ACCESS */}
           <div className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-200">
