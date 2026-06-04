@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUserAsync, getTeamAsync, leaveTeamAsync, uploadPaymentReceiptAsync, uploadMedicalCertificateAsync, Team, Athlete } from '@/lib/db';
+import { getCurrentUserAsync, getTeamAsync, leaveTeamAsync, Team, Athlete } from '@/lib/db';
 import Navbar from '@/components/Navbar';
 import {
   Users,
@@ -11,7 +11,6 @@ import {
   DollarSign,
   Heart,
   AlertTriangle,
-  Upload,
   ExternalLink,
   MapPin,
   Clock
@@ -22,11 +21,6 @@ export default function AthleteDashboard() {
   const [user, setUser] = useState<Athlete | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [receiptFile, setReceiptFile] = useState<string>('');
-  const [certFile, setCertFile] = useState<string>('');
-  const [uploadError, setUploadError] = useState('');
-  const [certError, setCertError] = useState('');
 
   const loadData = async () => {
     const currentUser = await getCurrentUserAsync();
@@ -59,34 +53,6 @@ export default function AthleteDashboard() {
       await leaveTeamAsync(user.email);
       loadData();
     }
-  };
-
-  const handleUploadReceipt = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    if (!receiptFile) {
-      setUploadError('Selecciona un archivo para simular el comprobante.');
-      return;
-    }
-    await uploadPaymentReceiptAsync(user.email, receiptFile);
-    setReceiptFile('');
-    setUploadError('');
-    alert('Comprobante subido con exito. Estado cambiado a "Pendiente de Verificacion".');
-    loadData();
-  };
-
-  const handleUploadCert = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    if (!certFile) {
-      setCertError('Selecciona un archivo de apto fisico.');
-      return;
-    }
-    await uploadMedicalCertificateAsync(user.email, certFile);
-    setCertFile('');
-    setCertError('');
-    alert('Certificado medico subido con exito. Queda en revision por el coordinador.');
-    loadData();
   };
 
   if (isLoading) {
@@ -273,31 +239,11 @@ export default function AthleteDashboard() {
                   </div>
 
                   {(user.payment_status === 'Pendiente_Pago' || user.payment_status === 'Vencido') && (
-                    <form onSubmit={handleUploadReceipt} className="space-y-3 pt-4 border-t border-slate-100">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-slate-500">Cargar comprobante de pago</label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="text"
-                            placeholder="Ej. transferencia_mayo.pdf"
-                            value={receiptFile}
-                            onChange={(e) => {
-                              setReceiptFile(e.target.value);
-                              setUploadError('');
-                            }}
-                            className="flex-grow bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200"
-                          />
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-full shadow transition-all duration-150 cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Upload className="w-3.5 h-3.5" />
-                            Enviar
-                          </button>
-                        </div>
-                        {uploadError && <p className="text-xs text-red-600 font-medium">{uploadError}</p>}
+                    <div className="pt-4 border-t border-slate-100">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 leading-relaxed text-center">
+                        La carga de comprobantes no esta disponible aun.
                       </div>
-                    </form>
+                    </div>
                   )}
                 </div>
 
@@ -359,31 +305,11 @@ export default function AthleteDashboard() {
                   </div>
 
                   {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado') && (
-                    <form onSubmit={handleUploadCert} className="space-y-3 pt-4 border-t border-slate-100">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-slate-500">Cargar apto medico (PDF/Imagen)</label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="text"
-                            placeholder="Ej. certificado_medico_2026.jpg"
-                            value={certFile}
-                            onChange={(e) => {
-                              setCertFile(e.target.value);
-                              setCertError('');
-                            }}
-                            className="flex-grow bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200"
-                          />
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-full shadow transition-all duration-150 cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Upload className="w-3.5 h-3.5" />
-                            Enviar
-                          </button>
-                        </div>
-                        {certError && <p className="text-xs text-red-600 font-medium">{certError}</p>}
+                    <div className="pt-4 border-t border-slate-100">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 leading-relaxed text-center">
+                        La carga de apto medico no esta disponible aun.
                       </div>
-                    </form>
+                    </div>
                   )}
                 </div>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getCurrentUserAsync, setCurrentUserEmail, getAthletesAsync, Athlete } from '@/lib/db';
-import { LogOut, Shield, Compass, Grid, Sparkles, User } from 'lucide-react';
+import { LogOut, Shield, Compass, Grid, User } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Navbar() {
@@ -34,18 +34,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* LOGO */}
+          {/* NAV LINKS */}
           <div className="flex items-center gap-6">
-            <Link href={user.role === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-600/20 group-hover:scale-105 transition-transform duration-200">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors duration-200">
-                RV
-              </span>
-            </Link>
-
-            {/* NAV LINKS */}
             <nav className="hidden md:flex items-center gap-1">
               {user.role === 'admin' ? (
                 <Link

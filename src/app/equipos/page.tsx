@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUserAsync, getTeamsAsync, joinTeamAsync, Team, Athlete } from '@/lib/db';
+import { getCurrentUserAsync, getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete } from '@/lib/db';
 import Navbar from '@/components/Navbar';
 import { MapPin, Users, Calendar, MessageSquare, ArrowRight, Search } from 'lucide-react';
 
@@ -35,12 +35,14 @@ export default function EquiposPage() {
 
   const handleJoinTeam = async (teamId: string) => {
     if (!user) return;
-    const confirm_ = window.confirm('¿Deseas enviar tu solicitud de ingreso a este equipo?');
-    if (confirm_) {
-      await joinTeamAsync(user.email, teamId);
-      alert('Solicitud enviada con exito. El coordinador revisara tu postulacion.');
-      loadData();
-    }
+    await joinTeamAsync(user.email, teamId);
+    loadData();
+  };
+
+  const handleCancelRequest = async () => {
+    if (!user) return;
+    await leaveTeamAsync(user.email);
+    loadData();
   };
 
   const filteredTeams = teams.filter(team => 
@@ -151,9 +153,12 @@ export default function EquiposPage() {
                         Eres miembro activo
                       </div>
                     ) : isPending ? (
-                      <div className="w-full py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-sm font-semibold text-center">
-                        Solicitud pendiente
-                      </div>
+                      <button
+                        onClick={handleCancelRequest}
+                        className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-full text-sm font-semibold text-center transition-all duration-150 cursor-pointer"
+                      >
+                        Cancelar solicitud
+                      </button>
                     ) : user.team_id ? (
                       <div className="w-full py-3 bg-slate-100 text-slate-500 border border-slate-200 rounded-full text-sm font-medium text-center">
                         Ya perteneces a otro equipo
