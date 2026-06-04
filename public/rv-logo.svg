@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="mountainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF5A1F" />
+      <stop offset="100%" stop-color="#FF8A50" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1A3834" />
+      <stop offset="100%" stop-color="#112522" />
+    </linearGradient>
+  </defs>
+  <!-- Background Circle with border -->
+  <circle cx="50" cy="50" r="48" fill="url(#bgGrad)" stroke="#FBFAF4" stroke-width="2" />
+  
+  <!-- Stylized Mountain Peaks -->
+  <!-- Left smaller peak -->
+  <polygon points="20,70 40,45 60,70" fill="#FF5A1F" opacity="0.7" />
+  <!-- Center larger peak -->
+  <polygon points="35,70 55,30 80,70" fill="url(#mountainGrad)" />
+  
+  <!-- Snow caps -->
+  <polygon points="50,40 55,30 60,40 57,37 55,41 53,37" fill="#FBFAF4" />
+  <polygon points="36,50 40,45 44,50 42,48 40,51 38,48" fill="#FBFAF4" opacity="0.7" />
+
+  <!-- Trail / Path line -->
+  <path d="M 25,75 Q 50,60 75,72" fill="none" stroke="#FBFAF4" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Text "RV" -->
+  <text x="50" y="88" font-family="'Outfit', 'Inter', sans-serif" font-weight="900" font-size="12" fill="#FBFAF4" text-anchor="middle" letter-spacing="2">RV EQUIPO</text>
+</svg>
