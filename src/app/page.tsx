@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getCurrentUserAsync, setCurrentUserEmail, getAthletesAsync, Athlete } from '@/lib/db';
+import { getCurrentUserAsync, Athlete } from '@/lib/db';
 import { Sparkles } from 'lucide-react';
 
 export default function Login() {
@@ -74,6 +74,8 @@ export default function Login() {
         setIsLoading(false);
         return;
       }
+      router.refresh();
+      await new Promise(resolve => setTimeout(resolve, 500));
       const user = await getCurrentUserAsync();
       if (user) {
         redirectUser(user);
@@ -83,20 +85,6 @@ export default function Login() {
     } catch (error) {
       console.error('Error signing in:', error);
       setAuthError('Error al iniciar sesion');
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (email: string) => {
-    setIsLoading(true);
-    setCurrentUserEmail(email);
-    
-    const athletes = await getAthletesAsync();
-    const user = athletes.find(a => a.email === email);
-    
-    if (user) {
-      redirectUser(user);
-    } else {
       setIsLoading(false);
     }
   };
@@ -169,41 +157,6 @@ export default function Login() {
               {isLoading ? 'Ingresando...' : 'Iniciar sesion'}
             </button>
           </form>
-
-          {/* DEMO ACCESS */}
-          <div className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-3">Accesos de prueba (Demo)</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleDemoLogin('admin@rv.com')}
-                disabled={isLoading}
-                className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-full text-xs text-slate-700 font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
-              >
-                Admin
-              </button>
-              <button
-                onClick={() => handleDemoLogin('atleta_activo@rv.com')}
-                disabled={isLoading}
-                className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-full text-xs text-slate-700 font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
-              >
-                Atleta Activo
-              </button>
-              <button
-                onClick={() => handleDemoLogin('atleta_nuevo@rv.com')}
-                disabled={isLoading}
-                className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-full text-xs text-slate-700 font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
-              >
-                Nuevo Usuario
-              </button>
-              <button
-                onClick={() => handleDemoLogin('pendiente_pago@rv.com')}
-                disabled={isLoading}
-                className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-full text-xs text-slate-700 font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
-              >
-                Pago Pendiente
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="text-xs text-slate-500 text-center">
