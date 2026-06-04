@@ -25,7 +25,7 @@ export default function AdminPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [team, setTeam] = useState<Team | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
-  const [activeTab, setActiveTab] = useState<"solicitudes" | "atletas" | "aptos" | "equipo" | "historial">("solicitudes")
+  const [activeTab, setActiveTab] = useState<"equipo" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("equipo")
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
   const [modalType, setModalType] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
@@ -225,10 +225,11 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6 border-b border-border pb-4">
           {[
+            { id: "equipo", label: "Mi Equipo", count: 0 },
             { id: "solicitudes", label: "Solicitudes", count: pendingSolicitudes.length },
             { id: "atletas", label: "Atletas", count: activeMembers.length },
+            { id: "pagos", label: "Pagos", count: pendingPagos.length },
             { id: "aptos", label: "Aptos Medicos", count: pendingAptos.length },
-            { id: "equipo", label: "Mi Equipo", count: 0 },
             { id: "historial", label: "Historial", count: 0 }
           ].map(tab => (
             <button
@@ -249,6 +250,77 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        {/* Equipo Tab */}
+        {activeTab === "equipo" && team && (
+          <div className="bg-card rounded-xl p-6 border border-border">
+            <h2 className="text-xl font-semibold text-foreground mb-6">{team.name}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Descripcion</label>
+                <textarea
+                  value={teamForm.description}
+                  onChange={(e) => setTeamForm({ ...teamForm, description: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Coach</label>
+                  <input
+                    type="text"
+                    value={teamForm.coach}
+                    onChange={(e) => setTeamForm({ ...teamForm, coach: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Ubicacion</label>
+                  <input
+                    type="text"
+                    value={teamForm.location}
+                    onChange={(e) => setTeamForm({ ...teamForm, location: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Dias de entrenamiento</label>
+                <input
+                  type="text"
+                  value={teamForm.training_days}
+                  onChange={(e) => setTeamForm({ ...teamForm, training_days: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Link de WhatsApp</label>
+                <input
+                  type="url"
+                  value={teamForm.whatsapp_url}
+                  onChange={(e) => setTeamForm({ ...teamForm, whatsapp_url: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Instrucciones</label>
+                <textarea
+                  value={teamForm.instructions}
+                  onChange={(e) => setTeamForm({ ...teamForm, instructions: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={3}
+                />
+              </div>
+              <button
+                onClick={handleSaveTeam}
+                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+              >
+                Guardar cambios
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Solicitudes Tab */}
         {activeTab === "solicitudes" && (
@@ -320,14 +392,6 @@ export default function AdminPage() {
                         <td className="px-4 py-3">{getAptoBadge(athlete.apto_medico_status)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex gap-2 justify-end">
-                            {athlete.payment_status === "Pendiente_Verificacion" && (
-                              <button
-                                onClick={() => { setSelectedAthlete(athlete); setModalType("reviewPago") }}
-                                className="px-3 py-1 bg-primary text-primary-foreground rounded text-xs hover:opacity-90"
-                              >
-                                Revisar pago
-                              </button>
-                            )}
                             {athlete.payment_status !== "Pagado" && athlete.payment_status !== "Pendiente_Verificacion" && (
                               <button
                                 onClick={() => handleManualPayment(athlete)}
@@ -350,6 +414,48 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Pagos Tab */}
+        {activeTab === "pagos" && (
+          <div className="space-y-4">
+            {pendingPagos.length === 0 ? (
+              <div className="bg-card rounded-xl p-8 text-center border border-border">
+                <p className="text-muted-foreground">No hay comprobantes de pago pendientes de revision</p>
+              </div>
+            ) : (
+              pendingPagos.map(athlete => (
+                <div key={athlete.id} className="bg-card rounded-xl p-6 border border-border">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{athlete.name || "Sin nombre"}</h3>
+                      <p className="text-sm text-muted-foreground">{athlete.email}</p>
+                      <p className="text-sm text-muted-foreground">Metodo: {athlete.payment_method || "No especificado"}</p>
+                      {athlete.payment_receipt_url && (
+                        <a href={`/api/storage/receipts?filename=${athlete.payment_receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                          Ver comprobante
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApprovePago(athlete)}
+                        className="px-4 py-2 bg-success text-success-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                      >
+                        Aprobar
+                      </button>
+                      <button
+                        onClick={() => { setSelectedAthlete(athlete); setModalType("rejectPago") }}
+                        className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                      >
+                        Rechazar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -391,77 +497,6 @@ export default function AdminPage() {
                 </div>
               ))
             )}
-          </div>
-        )}
-
-        {/* Equipo Tab */}
-        {activeTab === "equipo" && team && (
-          <div className="bg-card rounded-xl p-6 border border-border">
-            <h2 className="text-xl font-semibold text-foreground mb-6">{team.name}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Descripcion</label>
-                <textarea
-                  value={teamForm.description}
-                  onChange={(e) => setTeamForm({ ...teamForm, description: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Coach</label>
-                  <input
-                    type="text"
-                    value={teamForm.coach}
-                    onChange={(e) => setTeamForm({ ...teamForm, coach: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Ubicacion</label>
-                  <input
-                    type="text"
-                    value={teamForm.location}
-                    onChange={(e) => setTeamForm({ ...teamForm, location: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Dias de entrenamiento</label>
-                <input
-                  type="text"
-                  value={teamForm.training_days}
-                  onChange={(e) => setTeamForm({ ...teamForm, training_days: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Link de WhatsApp</label>
-                <input
-                  type="url"
-                  value={teamForm.whatsapp_url}
-                  onChange={(e) => setTeamForm({ ...teamForm, whatsapp_url: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Instrucciones</label>
-                <textarea
-                  value={teamForm.instructions}
-                  onChange={(e) => setTeamForm({ ...teamForm, instructions: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                />
-              </div>
-              <button
-                onClick={handleSaveTeam}
-                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
-              >
-                Guardar cambios
-              </button>
-            </div>
           </div>
         )}
 
@@ -547,26 +582,20 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Modal revisar pago */}
-        {modalType === "reviewPago" && selectedAthlete && (
+        {/* Modal de rechazo pago */}
+        {modalType === "rejectPago" && selectedAthlete && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-card rounded-xl p-6 w-full max-w-md border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Revisar comprobante de pago</h3>
-              <p className="text-sm text-muted-foreground mb-2">Atleta: {selectedAthlete.name}</p>
-              <p className="text-sm text-muted-foreground mb-4">Metodo: {selectedAthlete.payment_method || "No especificado"}</p>
-              {selectedAthlete.payment_receipt_url && (
-                <a href={`/api/storage/receipts?filename=${selectedAthlete.payment_receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline block mb-4">
-                  Ver comprobante
-                </a>
-              )}
+              <h3 className="text-lg font-semibold text-foreground mb-4">Rechazar comprobante de pago</h3>
+              <p className="text-sm text-muted-foreground mb-4">Atleta: {selectedAthlete.name}</p>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-foreground mb-1">Motivo de rechazo (opcional)</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Motivo del rechazo</label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={2}
-                  placeholder="Solo si rechazas..."
+                  rows={3}
+                  placeholder="Ingresa el motivo..."
                 />
               </div>
               <div className="flex gap-3">
@@ -580,13 +609,7 @@ export default function AdminPage() {
                   onClick={handleRejectPago}
                   className="flex-1 py-2 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
                 >
-                  Rechazar
-                </button>
-                <button
-                  onClick={() => handleApprovePago(selectedAthlete)}
-                  className="flex-1 py-2 bg-success text-success-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Aprobar
+                  Confirmar rechazo
                 </button>
               </div>
             </div>
