@@ -192,9 +192,12 @@ export default function EquiposPage() {
                   <div className="px-4 pb-5 space-y-2">
                     <div className="grid grid-cols-2 gap-3">
                       {isActive ? (
-                        <div className="w-full py-2 bg-emerald-600 text-white rounded-full text-xs font-semibold text-center flex items-center justify-center select-none shadow-sm">
+                        <button
+                          onClick={() => router.push('/dashboard')}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-semibold text-center flex items-center justify-center shadow-sm cursor-pointer transition-colors duration-150"
+                        >
                           Miembro
-                        </div>
+                        </button>
                       ) : isPending ? (
                         <button
                           onClick={handleCancelRequest}

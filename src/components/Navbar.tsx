@@ -21,13 +21,13 @@ export default function Navbar() {
     const currentUser = await getCurrentUserAsync();
     setUser(currentUser);
     
-    // Ajustar el índice activo según la ruta actual
-    if (pathname === '/dashboard' || pathname === '/admin') {
+    // Ajustar el índice activo según la ruta actual (3 pestañas)
+    if (pathname === '/equipos') {
       setActiveIndex(0);
-    } else if (pathname === '/equipos') {
-      setActiveIndex(1);
     } else if (pathname === '/perfil') {
-      setActiveIndex(2);
+      setActiveIndex(1);
+    } else {
+      setActiveIndex(-1); // Se desliza fuera de pantalla si está en dashboard / admin
     }
   };
 
@@ -40,10 +40,7 @@ export default function Navbar() {
 
   if (!user) return null;
 
-  const homeHref = user.role === 'admin' ? '/admin' : '/dashboard';
-
   const navigationItems = [
-    { label: 'Inicio', href: homeHref, icon: Home },
     { label: 'Equipos', href: '/equipos', icon: Compass },
     { label: 'Perfil', href: '/perfil', icon: User },
     { label: 'Salir', action: handleLogout, icon: LogOut }
@@ -61,12 +58,12 @@ export default function Navbar() {
               {/* Black shapes mean transparent cutout */}
               <g 
                 style={{ 
-                  transform: `translateX(${activeIndex * 90}px)`, 
+                  transform: `translateX(${activeIndex * 120}px)`, 
                   transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' 
                 }}
               >
-                {/* Curved cutout centered at 45px (half of 90px cell width) */}
-                <path d="M 5 -1 C 25 -1, 22 28, 45 28 C 68 28, 65 -1, 85 -1 Z" fill="black" />
+                {/* Curved cutout centered at 60px (half of 120px cell width) */}
+                <path d="M 20 -1 C 40 -1, 37 28, 60 28 C 83 28, 80 -1, 100 -1 Z" fill="black" />
               </g>
             </mask>
           </defs>
@@ -76,18 +73,20 @@ export default function Navbar() {
 
       {/* Floating Active Lime Green Circle Indicator */}
       <div 
-        className="absolute w-[90px] h-[72px] flex items-center justify-center pointer-events-none z-10"
+        className="absolute w-[120px] h-[72px] flex items-center justify-center pointer-events-none z-10"
         style={{ 
-          transform: `translateX(${activeIndex * 90}px)`, 
+          transform: `translateX(${activeIndex * 120}px)`, 
           transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' 
         }}
       >
-        <div className="w-12 h-12 rounded-full bg-[#4ade80] flex items-center justify-center shadow-lg shadow-[#4ade80]/30 -translate-y-6 transition-all duration-300">
-          {(() => {
-            const ActiveIcon = navigationItems[activeIndex].icon;
-            return <ActiveIcon className="w-5 h-5 text-black stroke-[2.5]" />;
-          })()}
-        </div>
+        {activeIndex >= 0 && (
+          <div className="w-12 h-12 rounded-full bg-[#4ade80] flex items-center justify-center shadow-lg shadow-[#4ade80]/30 -translate-y-6 transition-all duration-300">
+            {(() => {
+              const ActiveIcon = navigationItems[activeIndex].icon;
+              return <ActiveIcon className="w-5 h-5 text-black stroke-[2.5]" />;
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Tab Buttons Layer */}
@@ -97,7 +96,7 @@ export default function Navbar() {
           const Icon = item.icon;
 
           const buttonContent = (
-            <div className="flex flex-col items-center justify-center w-[90px] h-[72px] group relative select-none">
+            <div className="flex flex-col items-center justify-center w-[120px] h-[72px] group relative select-none">
               {!isTabActive && (
                 <Icon className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-150 stroke-[2]" />
               )}
@@ -109,7 +108,7 @@ export default function Navbar() {
               <button 
                 key={idx} 
                 onClick={item.action} 
-                className="focus:outline-none w-[90px] h-[72px] cursor-pointer"
+                className="focus:outline-none w-[120px] h-[72px] cursor-pointer"
               >
                 {buttonContent}
               </button>
@@ -120,7 +119,7 @@ export default function Navbar() {
             <Link 
               key={idx} 
               href={item.href} 
-              className="focus:outline-none w-[90px] h-[72px]"
+              className="focus:outline-none w-[120px] h-[72px]"
             >
               {buttonContent}
             </Link>
