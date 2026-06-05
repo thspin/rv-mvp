@@ -53,3 +53,11 @@ This app relies on **Supabase Row Level Security (RLS)**.
 3.  **Translations**: The app UI must be entirely in **Spanish** (`es-AR`).
 4.  **Error Handling**: Wrap database operations in `try-catch` blocks and log descriptive error outputs. Keep UI states interactive during loading.
 5.  **State Upgrades**: If you modify `db.ts`, make sure to update both the asynchronous version (used by pages) and any mock fallbacks.
+
+---
+
+## 🚀 Flujo de Verificación y Despliegue
+
+1.  **Verificación local sin servidor**: Para validar que los cambios de código no rompan la aplicación y evitar errores de TypeScript, ejecuta `npm run build` en local. No es necesario levantar un servidor de desarrollo local (`npm run dev`) ni configurar credenciales locales de Supabase (`.env.local`), a menos que sea estrictamente necesario para depurar algún error específico de la integración.
+2.  **Pruebas funcionales**: La verificación visual y funcional final se realiza directamente en el entorno de Staging/Producción provisto por Vercel una vez que los cambios se suben a GitHub.
+
