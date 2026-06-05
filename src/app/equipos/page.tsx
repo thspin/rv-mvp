@@ -113,73 +113,109 @@ export default function EquiposPage() {
               const isPending = isUserTeam && user.team_status === 'pendiente';
               const isActive = isUserTeam && user.team_status === 'activo';
 
+              // Obtener información dinámica del coach y atleta
+              const teamAdmin = allAthletes.find(a => a.team_id === team.id && a.role === 'admin');
+              const coachName = teamAdmin ? teamAdmin.name : team.coach;
+              const athleteCount = allAthletes.filter(a => a.team_id === team.id && a.team_status === 'activo').length;
+
               return (
                 <div
                   key={team.id}
-                  className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+                  className="bg-[#e2edf6] border border-white/50 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative"
                 >
-                  {/* Card Header */}
-                  <div className="p-6 pb-4">
-                    <div className="flex items-start gap-4">
-                      {team.logo_url && (
-                        <div className="w-14 h-14 rounded-xl bg-slate-900 overflow-hidden flex items-center justify-center p-1.5 flex-shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-slate-900 truncate">{team.name}</h3>
-                        {team.location && (
-                          <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            {team.location}
-                          </div>
-                        )}
+                  {/* Top Cover Image */}
+                  <div className="relative h-44 w-full overflow-hidden bg-slate-300">
+                    <img 
+                      src={coachName === 'Raúl Vergara' || coachName === 'Raul Vergara' ? '/coach-raul.png' : team.logo_url || '/rv-logo.svg'} 
+                      alt={coachName} 
+                      className="w-full h-full object-cover object-top"
+                    />
+                    
+                    {/* Dark overlay at bottom for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#e2edf6] via-slate-900/10 to-slate-900/35" />
+
+                    {/* Location Badge Overlay */}
+                    {team.location && (
+                      <div className="bg-slate-900/50 backdrop-blur-md text-white text-[9px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 w-fit absolute top-3 left-3 border border-white/10">
+                        <MapPin className="w-3 h-3 text-white" />
+                        <span>{team.location}</span>
                       </div>
+                    )}
+
+                    {/* Title overlay at bottom left */}
+                    <div className="absolute bottom-3 left-4 right-4 text-left">
+                      <h3 className={`${archivoFont.className} text-xl font-black text-slate-900 leading-none uppercase truncate`}>
+                        {coachName}
+                      </h3>
+                      <p className="text-[10px] text-slate-600 font-bold truncate mt-0.5">
+                        {team.name}
+                      </p>
                     </div>
                   </div>
 
                   {/* Card Body */}
-                  <div className="px-6 pb-4 space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Users className="w-4 h-4 text-slate-400" />
-                      <span>Entrenador: <strong className="text-slate-900">{team.coach}</strong></span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Calendar className="w-4 h-4 text-slate-400" />
-                      <span>{team.training_days}</span>
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    {/* Stats Card inside */}
+                    <div className="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/20 space-y-2 text-left">
+                      <div className="flex items-center gap-2 text-[11px] text-slate-600">
+                        <Users className="w-3.5 h-3.5 text-[#1e4e6d]" />
+                        <span>Atletas Activos: <strong className="text-slate-800">{athleteCount}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-600">
+                        <Calendar className="w-3.5 h-3.5 text-[#1e4e6d]" />
+                        <span className="truncate">Días: <strong className="text-slate-800">{team.training_days}</strong></span>
+                      </div>
                     </div>
 
+                    {/* Specialties / Sports badges */}
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { name: 'Trail', icon: Mountain },
+                        { name: 'Ruta', icon: Compass },
+                        { name: 'Fuerza', icon: Dumbbell }
+                      ].map((sport) => {
+                        const SportIcon = sport.icon;
+                        return (
+                          <span 
+                            key={sport.name} 
+                            className="bg-white/60 text-slate-700 px-2 py-0.5 rounded-full text-[9px] font-bold border border-slate-200/30 flex items-center gap-1"
+                          >
+                            <SportIcon className="w-2.5 h-2.5 text-[#1e4e6d]" />
+                            {sport.name}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Card Footer */}
-                  <div className="px-6 pb-6 space-y-2">
+                  <div className="px-4 pb-5 space-y-2">
                     <div className="grid grid-cols-2 gap-3">
                       {isActive ? (
-                        <div className="w-full py-2.5 bg-emerald-600 text-white rounded-full text-xs font-semibold text-center flex items-center justify-center select-none shadow-sm">
+                        <div className="w-full py-2 bg-emerald-600 text-white rounded-full text-xs font-semibold text-center flex items-center justify-center select-none shadow-sm">
                           Miembro
                         </div>
                       ) : isPending ? (
                         <button
                           onClick={handleCancelRequest}
-                          className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-semibold text-center transition-all duration-150 cursor-pointer shadow-sm animate-pulse"
+                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-semibold text-center transition-all duration-150 cursor-pointer shadow-sm animate-pulse"
                         >
                           Cancelar
                         </button>
                       ) : (
                         <button
                           onClick={() => handleJoinTeam(team.id)}
-                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+                          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1"
                         >
                           Unirse
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <ArrowRight className="w-3 h-3" />
                         </button>
                       )}
                       <button
                         onClick={() => {
                           setActiveTeamDetails(team);
                         }}
-                        className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer text-center shadow-sm"
+                        className="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer text-center shadow-sm"
                       >
                         Ver equipo
                       </button>
