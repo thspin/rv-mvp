@@ -10,9 +10,6 @@ export default function Login() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     checkSession();
@@ -62,114 +59,71 @@ export default function Login() {
     }
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setAuthError('');
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setAuthError(error.message);
-        setIsLoading(false);
-        return;
-      }
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Error signing in:', error);
-      setAuthError('Error al iniciar sesion');
-      setIsLoading(false);
-    }
-  };
-
   if (isCheckingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse text-slate-600">Cargando...</div>
+        <div className="animate-pulse text-slate-600 font-medium">Cargando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 text-slate-900 font-sans antialiased overflow-hidden">
-      {/* LEFT SECTION: LOGIN */}
-      <div className="w-full md:w-1/2 flex flex-col justify-between p-8 md:p-16 bg-white border-r border-slate-200">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-            <span className="text-xs font-semibold text-blue-700 tracking-wide uppercase">RV MVP</span>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 font-sans antialiased relative overflow-hidden px-4">
+      {/* Background radial effects for premium feel */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.06),transparent_40%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(99,102,241,0.06),transparent_45%)]"></div>
+
+      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-100/40 p-8 md:p-10 z-10 text-center space-y-8 transition-all duration-300">
+        {/* Logo / Icon */}
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-950 p-[1px] shadow-lg shadow-slate-950/10">
+          <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-slate-950" />
           </div>
         </div>
 
-        <div className="max-w-md w-full mx-auto my-auto py-12">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-slate-900 mb-6 leading-tight">
-            Supera tus limites.
+        {/* Header Texts */}
+        <div className="space-y-3">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-950">
+            Superá tus límites.
           </h1>
-          <p className="text-lg text-slate-600 mb-8">
-            Unete a tu equipo de montana, realiza el seguimiento de tus cuotas y manten al dia tus aptos medicos de forma simple.
+          <p className="text-sm md:text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
+            Unite a tu equipo de montaña, hacé seguimiento de tus cuotas y mantené al día tus aptos médicos.
           </p>
+        </div>
 
-          {/* GOOGLE LOGIN BUTTON */}
+        {/* Google Login Button */}
+        <div className="pt-2">
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full py-3.5 px-6 bg-blue-600 text-white hover:bg-blue-700 font-semibold text-sm uppercase tracking-wide rounded-full shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 hover:-translate-y-0.5 active:translate-y-0.5 transition-all duration-200 cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3.5 px-6 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 hover:border-slate-300 font-semibold text-sm rounded-2xl shadow-sm hover:shadow transition-all duration-200 cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
           >
-            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-              <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.186 4.114-3.578 0-6.45-2.872-6.45-6.45s2.872-6.45 6.45-6.45c1.621 0 3.098.59 4.254 1.558l3.125-3.125C19.317 2.19 15.992 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-11 0-.648-.053-1.125-.152-1.485H12.24z"/>
+            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.53-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-8.77z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.08 1.16-3.14 0-5.8-2.11-6.75-4.96H1.21v3.15C3.18 21.88 7.39 24 12 24z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.25 14.24c-.25-.72-.39-1.5-.39-2.3 0-.8.14-1.58.39-2.3V6.49H1.21C.44 8.04 0 9.77 0 11.62c0 1.85.44 3.58 1.21 5.13l4.04-3.15c-.09-.36-.09-1-.09-1.36z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.22 0 12 0 7.39 0 3.18 2.12 1.21 5.62l4.04 3.15c.95-2.85 3.61-4.96 6.75-4.96z"
+              />
             </svg>
-            {isLoading ? 'Conectando...' : 'Continuar con Google'}
+            <span className="font-semibold text-slate-800">
+              {isLoading ? 'Conectando...' : 'Continuar con Google'}
+            </span>
           </button>
-
-          {/* EMAIL/PASSWORD LOGIN */}
-          <form onSubmit={handleEmailLogin} className="mt-4 space-y-3">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <input
-              type="password"
-              placeholder="Contrasena"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            {authError && (
-              <p className="text-xs text-red-600">{authError}</p>
-            )}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 px-6 bg-slate-900 text-white hover:bg-slate-800 font-semibold text-sm uppercase tracking-wide rounded-full shadow-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Ingresando...' : 'Iniciar sesion'}
-            </button>
-          </form>
         </div>
 
-        <div className="text-xs text-slate-500 text-center">
-          Al continuar, aceptas nuestros Terminos de servicio y Politica de privacidad.
-        </div>
-      </div>
-
-      {/* RIGHT SECTION: DESIGN */}
-      <div className="hidden md:flex w-1/2 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 border-l border-slate-700 justify-center items-center p-12 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_120%,rgba(59,130,246,0.1),transparent_50%)]"></div>
-        <div className="max-w-md text-center z-10 space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-blue-400 p-[1px] mx-auto shadow-xl shadow-blue-500/20">
-            <div className="w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
-          <h2 className="text-4xl font-bold text-white uppercase tracking-wide">Gestion de Equipos Deportivos</h2>
-          <p className="text-lg text-slate-400">
-            Una herramienta para coordinadores y atletas. Controla la seguridad medica y administrativa de tus salidas presenciales de montana.
-          </p>
+        <div className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed pt-2">
+          Al continuar, aceptás nuestros Términos de servicio y Política de privacidad.
         </div>
       </div>
     </div>
