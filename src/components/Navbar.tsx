@@ -3,14 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getCurrentUserAsync, setCurrentUserEmail, getAthletesAsync, Athlete } from '@/lib/db';
-import { LogOut, Shield, Compass, Grid, User } from 'lucide-react';
+import { getCurrentUserAsync, setCurrentUserEmail, Athlete } from '@/lib/db';
+import { LogOut, Compass, User, Home } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<Athlete | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     loadUser();
@@ -19,6 +20,15 @@ export default function Navbar() {
   const loadUser = async () => {
     const currentUser = await getCurrentUserAsync();
     setUser(currentUser);
+    
+    // Ajustar el índice activo según la ruta actual
+    if (pathname === '/dashboard' || pathname === '/admin') {
+      setActiveIndex(0);
+    } else if (pathname === '/equipos') {
+      setActiveIndex(1);
+    } else if (pathname === '/perfil') {
+      setActiveIndex(2);
+    }
   };
 
   const handleLogout = async () => {
@@ -30,94 +40,93 @@ export default function Navbar() {
 
   if (!user) return null;
 
+  const homeHref = user.role === 'admin' ? '/admin' : '/dashboard';
+
+  const navigationItems = [
+    { label: 'Inicio', href: homeHref, icon: Home },
+    { label: 'Equipos', href: '/equipos', icon: Compass },
+    { label: 'Perfil', href: '/perfil', icon: User },
+    { label: 'Salir', action: handleLogout, icon: LogOut }
+  ];
+
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* NAV LINKS */}
-          <div className="flex items-center gap-6">
-            <nav className="hidden md:flex items-center gap-1">
-              {user.role === 'admin' ? (
-                <Link
-                  href="/admin"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                    pathname === '/admin'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Shield className="w-4 h-4" />
-                  Administracion
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/dashboard"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                      pathname === '/dashboard'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Grid className="w-4 h-4" />
-                    Mi Panel
-                  </Link>
-
-                  <Link
-                    href="/equipos"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                      pathname === '/equipos'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Compass className="w-4 h-4" />
-                    Explorar Equipos
-                  </Link>
-
-                  <Link
-                    href="/perfil"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                      pathname === '/perfil'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <User className="w-4 h-4" />
-                    Mi Perfil
-                  </Link>
-                </>
-              )}
-            </nav>
-          </div>
-
-          {/* USER ACTIONS */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-              <div className="hidden sm:block text-right">
-                <div className="text-sm font-semibold text-slate-900 leading-tight">
-                  {user.name}
-                </div>
-                <div className="text-xs text-slate-500 leading-none mt-0.5">
-                  {user.email}
-                </div>
-              </div>
-
-              <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-semibold text-sm">
-                {user.name ? user.name[0].toUpperCase() : 'U'}
-              </div>
-
-              <button
-                onClick={handleLogout}
-                title="Cerrar sesion"
-                className="p-2 text-slate-500 hover:text-red-600 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all duration-150 cursor-pointer"
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[360px] h-[72px] flex items-center justify-between pointer-events-none">
+      {/* SVG Background with dynamic mask for the curved cutout */}
+      <div className="absolute inset-0 w-full h-full pointer-events-auto drop-shadow-[0_10px_25px_rgba(0,0,0,0.35)]">
+        <svg width="360" height="72" viewBox="0 0 360 72" className="w-full h-full text-zinc-950 fill-current">
+          <defs>
+            <mask id="navbar-mask">
+              {/* White background means visible */}
+              <rect x="0" y="0" width="360" height="72" rx="24" fill="white" />
+              {/* Black shapes mean transparent cutout */}
+              <g 
+                style={{ 
+                  transform: `translateX(${activeIndex * 90}px)`, 
+                  transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                }}
               >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+                {/* Curved cutout centered at 45px (half of 90px cell width) */}
+                <path d="M 5 -1 C 25 -1, 22 28, 45 28 C 68 28, 65 -1, 85 -1 Z" fill="black" />
+              </g>
+            </mask>
+          </defs>
+          <rect x="0" y="0" width="360" height="72" rx="24" mask="url(#navbar-mask)" />
+        </svg>
+      </div>
+
+      {/* Floating Active Lime Green Circle Indicator */}
+      <div 
+        className="absolute w-[90px] h-[72px] flex items-center justify-center pointer-events-none z-10"
+        style={{ 
+          transform: `translateX(${activeIndex * 90}px)`, 
+          transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+        }}
+      >
+        <div className="w-12 h-12 rounded-full bg-[#4ade80] flex items-center justify-center shadow-lg shadow-[#4ade80]/30 -translate-y-6 transition-all duration-300">
+          {(() => {
+            const ActiveIcon = navigationItems[activeIndex].icon;
+            return <ActiveIcon className="w-5 h-5 text-black stroke-[2.5]" />;
+          })()}
         </div>
       </div>
-    </header>
+
+      {/* Tab Buttons Layer */}
+      <div className="absolute inset-0 w-full h-full flex pointer-events-auto z-20">
+        {navigationItems.map((item, idx) => {
+          const isTabActive = activeIndex === idx;
+          const Icon = item.icon;
+
+          const buttonContent = (
+            <div className="flex flex-col items-center justify-center w-[90px] h-[72px] group relative select-none">
+              {!isTabActive && (
+                <Icon className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-150 stroke-[2]" />
+              )}
+            </div>
+          );
+
+          if (item.action) {
+            return (
+              <button 
+                key={idx} 
+                onClick={item.action} 
+                className="focus:outline-none w-[90px] h-[72px] cursor-pointer"
+              >
+                {buttonContent}
+              </button>
+            );
+          }
+
+          return (
+            <Link 
+              key={idx} 
+              href={item.href} 
+              className="focus:outline-none w-[90px] h-[72px]"
+            >
+              {buttonContent}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
