@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUserAsync, getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete } from '@/lib/db';
+import { getCurrentUserAsync, getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
 import Navbar from '@/components/Navbar';
 import { MapPin, Users, Calendar, ArrowRight, ChevronLeft, Clock, Footprints, Activity, Dumbbell, Mountain, Compass } from 'lucide-react';
 import { Archivo } from 'next/font/google';
