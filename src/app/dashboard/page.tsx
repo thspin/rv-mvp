@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client';
 import Navbar from '@/components/Navbar';
 import {
   Users,
-  MessageSquare,
   FileText,
   DollarSign,
   Heart,
@@ -237,16 +236,7 @@ export default function AthleteDashboard() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <a
-                      href={team.whatsapp_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-full shadow-lg shadow-blue-600/20 transition-all duration-150 cursor-pointer"
-                    >
-                      <MessageSquare className="w-4 h-4 fill-current" />
-                      Grupo de WhatsApp
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+
 
                     <button
                       onClick={handleLeaveTeam}

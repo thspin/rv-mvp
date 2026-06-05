@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
   const [modalType, setModalType] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
-  const [teamForm, setTeamForm] = useState({ description: "", whatsapp_url: "", training_days: "", coach: "", instructions: "", location: "" })
+  const [teamForm, setTeamForm] = useState({ description: "", training_days: "", coach: "", instructions: "", location: "" })
   const router = useRouter()
   const supabase = createClient()
 
@@ -60,7 +60,6 @@ export default function AdminPage() {
         setTeam(teamData)
         setTeamForm({
           description: teamData.description || "",
-          whatsapp_url: teamData.whatsapp_url || "",
           training_days: teamData.training_days || "",
           coach: teamData.coach || "",
           instructions: teamData.instructions || "",
@@ -294,15 +293,7 @@ export default function AdminPage() {
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Link de WhatsApp</label>
-                <input
-                  type="url"
-                  value={teamForm.whatsapp_url}
-                  onChange={(e) => setTeamForm({ ...teamForm, whatsapp_url: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Instrucciones</label>
                 <textarea

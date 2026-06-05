@@ -177,6 +177,22 @@ function addMonthsWithClamp(date: Date, months: number): Date {
 
 export async function getTeamAsync(teamId?: string): Promise<Team | null> {
   try {
+    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+    if (isMock) {
+      const targetId = teamId || 'mock-team-id';
+      return {
+        id: targetId,
+        name: 'RV Entrenamientos',
+        description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de run en todos los niveles.',
+        whatsapp_url: 'https://chat.whatsapp.com/RVEquipoRunSimulado',
+        training_days: 'Martes y Jueves 19:00 hs, Sabados 8:00 hs',
+        coach: 'Raul Vergara',
+        instructions: 'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratacion.',
+        location: 'La Rioja, Argentina',
+        logo_url: '/rv-logo.svg',
+      };
+    }
+
     const supabase = createClient()
     let query = supabase.from('teams').select('*')
     if (teamId) {
@@ -199,13 +215,13 @@ export async function getTeamById(id: string): Promise<Team | null> {
 export function getTeam(): Team {
   return {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    name: 'RV equipo de montana',
-    description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de montana en todos los niveles.',
+    name: 'RV Entrenamientos',
+    description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de run en todos los niveles.',
     whatsapp_url: 'https://chat.whatsapp.com/RVEquipoMontanaSimulado',
     training_days: 'Martes y Jueves 19:00 hs, Sabados 8:00 hs',
-    coach: 'Ramiro Valenzuela',
+    coach: 'Raul Vergara',
     instructions: 'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratacion.',
-    location: 'Mendoza, Argentina',
+    location: 'La Rioja, Argentina',
     logo_url: '/rv-logo.svg',
   }
 }
@@ -245,6 +261,23 @@ export async function updateTeam(id: string, updates: Partial<Team>): Promise<vo
 
 export async function getTeamsAsync(): Promise<Team[]> {
   try {
+    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+    if (isMock) {
+      return [
+        {
+          id: 'mock-team-id',
+          name: 'RV Entrenamientos',
+          description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de run en todos los niveles.',
+          whatsapp_url: 'https://chat.whatsapp.com/RVEquipoRunSimulado',
+          training_days: 'Martes y Jueves 19:00 hs, Sabados 8:00 hs',
+          coach: 'Raul Vergara',
+          instructions: 'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratacion.',
+          location: 'La Rioja, Argentina',
+          logo_url: '/rv-logo.svg',
+        }
+      ];
+    }
+
     const supabase = createClient()
     const { data, error } = await supabase
       .from('teams')
@@ -302,6 +335,28 @@ export async function getAthleteByEmail(email: string): Promise<Athlete | null> 
 
 export async function getCurrentUserAsync(): Promise<Athlete | null> {
   try {
+    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+    if (isMock) {
+      const demoEmail = getDemoEmail();
+      if (!demoEmail) return null;
+      return {
+        id: 'mock-athlete-id',
+        user_id: 'mock-user-id',
+        email: demoEmail,
+        name: 'Atleta de Prueba',
+        role: demoEmail === 'admin@demo.com' ? 'admin' : 'atleta',
+        onboarding_complete: true,
+        dni: '12345678',
+        phone: '+5491123456789',
+        talle_remera: 'M',
+        contacto_emergencia_name: 'Contacto Emergencia',
+        contacto_emergencia_phone: '+5491198765432',
+        team_id: 'mock-team-id',
+        team_status: 'activo',
+        payment_status: 'Pagado',
+      };
+    }
+
     const supabase = createClient()
     
     // 1. Verificar si hay un usuario de Supabase autenticado
@@ -389,6 +444,28 @@ export function getCurrentUser(): Athlete | null {
 
 export async function updateAthleteProfileAsync(email: string, updates: Partial<Athlete>): Promise<Athlete | null> {
   try {
+    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+    if (isMock) {
+      const demoEmail = getDemoEmail() || email;
+      return {
+        id: 'mock-athlete-id',
+        user_id: 'mock-user-id',
+        email: demoEmail,
+        name: 'Atleta de Prueba',
+        role: demoEmail === 'admin@demo.com' ? 'admin' : 'atleta',
+        onboarding_complete: true,
+        dni: '12345678',
+        phone: '+5491123456789',
+        talle_remera: 'M',
+        contacto_emergencia_name: 'Contacto Emergencia',
+        contacto_emergencia_phone: '+5491198765432',
+        team_id: updates.team_id !== undefined ? updates.team_id : 'mock-team-id',
+        team_status: updates.team_status !== undefined ? updates.team_status : 'activo',
+        payment_status: 'Pagado',
+        ...updates,
+      };
+    }
+
     const supabase = createClient()
     
     // Filtrar valores indefinidos y mapear a snake_case

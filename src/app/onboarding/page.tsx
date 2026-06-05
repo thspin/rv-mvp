@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUserAsync, completeOnboardingAsync, Athlete } from '@/lib/db';
-import { User, Phone, Ruler, ChevronRight, Sparkles } from 'lucide-react';
+import { User, Phone, Ruler, ChevronRight } from 'lucide-react';
 
 export default function Onboarding() {
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function Onboarding() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
         <div className="animate-pulse text-slate-600">Cargando...</div>
       </div>
     );
@@ -66,13 +66,10 @@ export default function Onboarding() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* HEADER */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/20">
-            <Sparkles className="w-7 h-7 text-white" />
-          </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Bienvenido a RV</h1>
           <p className="text-slate-600">Completa tu perfil para continuar</p>
         </div>

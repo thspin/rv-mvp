@@ -3,16 +3,26 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getCurrentUserAsync, Athlete } from '@/lib/db';
-import { Sparkles } from 'lucide-react';
+import { getCurrentUserAsync, setCurrentUserEmail, Athlete } from '@/lib/db';
+import { Archivo } from 'next/font/google';
+
+const archivoFont = Archivo({
+  subsets: ['latin'],
+  weight: ['800', '900'],
+});
 
 export default function Login() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isBgLoaded, setIsBgLoaded] = useState(false);
 
   useEffect(() => {
     checkSession();
+    const timer = setTimeout(() => {
+      setIsBgLoaded(true);
+    }, 50);
+    return () => clearTimeout(timer);
   }, []);
 
   const checkSession = async () => {
@@ -41,6 +51,20 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
+      const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+      if (isMock) {
+        console.log('Detectado entorno local sin credenciales. Usando fallback de demo...');
+        setCurrentUserEmail('atleta@demo.com');
+        const mockUser = {
+          email: 'atleta@demo.com',
+          name: 'Atleta de Prueba',
+          role: 'atleta' as const,
+          onboarding_complete: true
+        };
+        redirectUser(mockUser);
+        return;
+      }
+
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -61,42 +85,37 @@ export default function Login() {
 
   if (isCheckingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse text-slate-600 font-medium">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-pulse text-slate-400 font-medium">Cargando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 font-sans antialiased relative overflow-hidden px-4">
-      {/* Background radial effects for premium feel */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.06),transparent_40%)]"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(99,102,241,0.06),transparent_45%)]"></div>
+    <div className="min-h-screen flex items-end md:items-center justify-start bg-slate-950 text-white font-sans antialiased relative overflow-hidden px-6 py-12 md:p-20">
+      {/* Background images with Ken Burns / slow pan effect */}
+      <div className={`absolute inset-0 bg-cover bg-center bg-no-repeat bg-[url('/fondo_mobile.webp')] md:bg-[url('/fondo_web.webp')] transition-opacity duration-1000 ease-out animate-slow-pan ${isBgLoaded ? 'opacity-100' : 'opacity-0'}`}></div>
+      
+      {/* Dark gradient overlay to guarantee text contrast */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/20 md:bg-black/40"></div>
 
-      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-100/40 p-8 md:p-10 z-10 text-center space-y-8 transition-all duration-300">
-        {/* Logo / Icon */}
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-950 p-[1px] shadow-lg shadow-slate-950/10">
-          <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-slate-950" />
-          </div>
-        </div>
-
+      <div className="w-full max-w-md z-10 space-y-8 md:space-y-10">
         {/* Header Texts */}
-        <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-950">
-            Superá tus límites.
+        <div className="space-y-4 text-left">
+          <h1 className={`${archivoFont.className} text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.1]`}>
+            Superá<br />tus límites.
           </h1>
-          <p className="text-sm md:text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
-            Unite a tu equipo de montaña, hacé seguimiento de tus cuotas y mantené al día tus aptos médicos.
+          <p className="text-sm md:text-base text-slate-200/90 leading-relaxed max-w-sm">
+            Unite a tu equipo de run, hacé seguimiento de tus entrenamientos y mantené al día tu cuota y documentos.
           </p>
         </div>
 
         {/* Google Login Button */}
-        <div className="pt-2">
+        <div>
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full py-3.5 px-6 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 hover:border-slate-300 font-semibold text-sm rounded-2xl shadow-sm hover:shadow transition-all duration-200 cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
+            className="w-full py-4 px-6 bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 font-semibold text-sm md:text-base rounded-full shadow-lg hover:shadow-xl hover:shadow-white/5 backdrop-blur-md transition-all duration-300 ease-out cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path
@@ -116,14 +135,10 @@ export default function Login() {
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.22 0 12 0 7.39 0 3.18 2.12 1.21 5.62l4.04 3.15c.95-2.85 3.61-4.96 6.75-4.96z"
               />
             </svg>
-            <span className="font-semibold text-slate-800">
+            <span className="font-semibold">
               {isLoading ? 'Conectando...' : 'Continuar con Google'}
             </span>
           </button>
-        </div>
-
-        <div className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed pt-2">
-          Al continuar, aceptás nuestros Términos de servicio y Política de privacidad.
         </div>
       </div>
     </div>

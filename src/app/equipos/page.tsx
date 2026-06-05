@@ -4,7 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUserAsync, getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete } from '@/lib/db';
 import Navbar from '@/components/Navbar';
-import { MapPin, Users, Calendar, MessageSquare, ArrowRight, Search } from 'lucide-react';
+import { MapPin, Users, Calendar, ArrowRight } from 'lucide-react';
+import { Archivo } from 'next/font/google';
+
+const archivoFont = Archivo({
+  subsets: ['latin'],
+  weight: ['800', '900'],
+});
 
 export default function EquiposPage() {
   const router = useRouter();
@@ -52,8 +58,8 @@ export default function EquiposPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse text-slate-600">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="animate-pulse text-slate-600 font-medium">Cargando...</div>
       </div>
     );
   }
@@ -61,29 +67,19 @@ export default function EquiposPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* HEADER */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Explorar Equipos</h1>
-          <p className="text-slate-600">Encuentra tu equipo de montana ideal y solicita tu ingreso.</p>
+          <h1 className={`${archivoFont.className} text-4xl font-black tracking-tight text-slate-900 mb-2`}>
+            Explorar Equipos
+          </h1>
+          <p className="text-slate-600">Encuentra tu equipo de run ideal y solicita tu ingreso.</p>
         </div>
 
-        {/* SEARCH */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar por nombre o ubicacion..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-full text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
-            />
-          </div>
-        </div>
+
 
         {/* TEAMS GRID */}
         {filteredTeams.length === 0 ? (
@@ -133,17 +129,7 @@ export default function EquiposPage() {
                       <Calendar className="w-4 h-4 text-slate-400" />
                       <span>{team.training_days}</span>
                     </div>
-                    {team.whatsapp_url && (
-                      <a
-                        href={team.whatsapp_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        Grupo de WhatsApp
-                      </a>
-                    )}
+
                   </div>
 
                   {/* Card Footer */}
@@ -159,10 +145,6 @@ export default function EquiposPage() {
                       >
                         Cancelar solicitud
                       </button>
-                    ) : user.team_id ? (
-                      <div className="w-full py-3 bg-slate-100 text-slate-500 border border-slate-200 rounded-full text-sm font-medium text-center">
-                        Ya perteneces a otro equipo
-                      </div>
                     ) : (
                       <button
                         onClick={() => handleJoinTeam(team.id)}
