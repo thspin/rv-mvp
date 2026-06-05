@@ -295,6 +295,35 @@ export async function getTeamsAsync(): Promise<Team[]> {
 
 export async function getAthletesAsync(): Promise<Athlete[]> {
   try {
+    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+    if (isMock) {
+      return [
+        {
+          id: 'mock-admin-id',
+          user_id: 'mock-admin-user-id',
+          email: 'admin@demo.com',
+          name: 'Raúl Vergara',
+          role: 'admin',
+          onboarding_complete: true,
+          phone: '+5493804000000',
+          team_id: 'mock-team-id',
+          team_status: 'activo',
+        },
+        {
+          id: 'mock-athlete-id',
+          user_id: 'mock-user-id',
+          email: 'atleta@demo.com',
+          name: 'Atleta de Prueba',
+          role: 'atleta',
+          onboarding_complete: true,
+          dni: '12345678',
+          phone: '+5491123456789',
+          team_id: 'mock-team-id',
+          team_status: 'activo',
+        }
+      ];
+    }
+
     const supabase = createClient()
     const { data, error } = await supabase
       .from('athletes')
@@ -319,6 +348,37 @@ export function getAthletes(): Athlete[] {
 
 export async function getAthleteByEmail(email: string): Promise<Athlete | null> {
   try {
+    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+    if (isMock) {
+      if (email === 'admin@demo.com') {
+        return {
+          id: 'mock-admin-id',
+          user_id: 'mock-admin-user-id',
+          email: 'admin@demo.com',
+          name: 'Raúl Vergara',
+          role: 'admin',
+          onboarding_complete: true,
+          phone: '+5493804000000',
+          team_id: 'mock-team-id',
+          team_status: 'activo',
+        };
+      }
+      if (email === 'atleta@demo.com') {
+        return {
+          id: 'mock-athlete-id',
+          user_id: 'mock-user-id',
+          email: 'atleta@demo.com',
+          name: 'Atleta de Prueba',
+          role: 'atleta',
+          onboarding_complete: true,
+          dni: '12345678',
+          phone: '+5491123456789',
+          team_id: 'mock-team-id',
+          team_status: 'activo',
+        };
+      }
+    }
+
     const supabase = createClient()
     const { data, error } = await supabase
       .from('athletes')
@@ -340,14 +400,14 @@ export async function getCurrentUserAsync(): Promise<Athlete | null> {
       const demoEmail = getDemoEmail();
       if (!demoEmail) return null;
       return {
-        id: 'mock-athlete-id',
-        user_id: 'mock-user-id',
+        id: demoEmail === 'admin@demo.com' ? 'mock-admin-id' : 'mock-athlete-id',
+        user_id: demoEmail === 'admin@demo.com' ? 'mock-admin-user-id' : 'mock-user-id',
         email: demoEmail,
-        name: 'Atleta de Prueba',
+        name: demoEmail === 'admin@demo.com' ? 'Raúl Vergara' : 'Atleta de Prueba',
         role: demoEmail === 'admin@demo.com' ? 'admin' : 'atleta',
         onboarding_complete: true,
         dni: '12345678',
-        phone: '+5491123456789',
+        phone: demoEmail === 'admin@demo.com' ? '+5493804000000' : '+5491123456789',
         talle_remera: 'M',
         contacto_emergencia_name: 'Contacto Emergencia',
         contacto_emergencia_phone: '+5491198765432',
