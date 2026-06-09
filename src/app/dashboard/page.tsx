@@ -247,7 +247,40 @@ export default function AthleteDashboard() {
 
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
 
-        {team && (
+        {!user.team_id ? null : user.team_status === 'pendiente' && team ? (
+          /* SOLICITUD PENDIENTE */
+          <div className="bg-white border border-slate-200 rounded-[32px] p-8 max-w-2xl mx-auto my-12 shadow-sm space-y-6 relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-50 to-transparent rounded-bl-full pointer-events-none" />
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                <Clock className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h1 className={`${archivoFont.className} text-xl font-black text-slate-900 uppercase tracking-tight`}>Solicitud en revisión</h1>
+                <p className="text-sm text-slate-500 font-medium">Equipo: {team.name}</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm text-amber-800 leading-relaxed relative z-10">
+              <strong>Postulación enviada:</strong> Tu solicitud de ingreso para el equipo <strong>&quot;{team.name}&quot;</strong> está siendo evaluada por el coordinador. Una vez aprobado, figurarás como miembro activo para registrar pagos y acceder a las planificaciones.
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 relative z-10">
+              <button
+                onClick={handleLeaveTeam}
+                className="w-full py-3 text-slate-700 border border-slate-200 hover:bg-slate-50 font-bold text-xs rounded-full transition-all duration-150 cursor-pointer uppercase tracking-wider"
+              >
+                Cancelar solicitud
+              </button>
+              <button
+                onClick={() => router.push('/equipos')}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-full transition-all duration-150 cursor-pointer uppercase tracking-wider"
+              >
+                Ver Info del Equipo
+              </button>
+            </div>
+          </div>
+        ) : team && (
             <div className="space-y-6 text-left">
               {/* HEADER DE BIENVENIDA AL EQUIPO */}
               <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative overflow-hidden">
