@@ -10,7 +10,7 @@ import HeaderAlert from '@/components/HeaderAlert';
 import { isProfileComplete, calculateProfileCompletion } from '@/lib/utils';
 import { 
   User, Save, AlertCircle, Edit3, X, ShieldAlert, 
-  MapPin, FileText, Camera, Upload, AlertTriangle
+  MapPin, FileText, Camera, Upload, AlertTriangle, Check
 } from 'lucide-react';
 import { Archivo } from 'next/font/google';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -204,9 +204,8 @@ export default function PerfilPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  const handleSaveAsync = async (): Promise<boolean> => {
+    if (!user) return false;
     
     if (
       !form.name.trim() || !form.dni.trim() || !form.phone.trim() || 
@@ -215,14 +214,14 @@ export default function PerfilPage() {
       !form.pais.trim() || !form.provincia.trim() || !form.ciudad.trim() || !form.codigoPostal.trim() || !form.domicilio.trim()
     ) {
       setMessage({ type: 'error', text: 'Por favor completa todos los campos de datos personales, residencia y emergencia.' });
-      return;
+      return false;
     }
 
     // Validar formato de fecha de nacimiento (DD/MM/AAAA)
     const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
     if (!dateRegex.test(form.fechaNacimiento)) {
       setMessage({ type: 'error', text: 'Por favor ingresa una fecha de nacimiento válida en formato DD/MM/AAAA.' });
-      return;
+      return false;
     }
 
     const parts = form.fechaNacimiento.split('/');
@@ -239,7 +238,7 @@ export default function PerfilPage() {
       yyyy > today.getFullYear()
     ) {
       setMessage({ type: 'error', text: 'La fecha de nacimiento no es una fecha válida.' });
-      return;
+      return false;
     }
     
     setIsSaving(true);
@@ -272,11 +271,27 @@ export default function PerfilPage() {
       const freshUser = await getCurrentUserAction();
       if (freshUser) setUser(freshUser);
       setMessage({ type: 'success', text: 'Perfil actualizado correctamente.' });
-      setIsEditing(false);
+      return true;
     } catch {
       setMessage({ type: 'error', text: 'Error al actualizar el perfil.' });
+      return false;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await handleSaveAsync();
+    if (success) {
+      setIsEditing(false);
+    }
+  };
+
+  const handleListoParaSalir = async () => {
+    const success = await handleSaveAsync();
+    if (success) {
+      setIsEditing(false);
     }
   };
 
@@ -372,6 +387,26 @@ export default function PerfilPage() {
   );
 
   const mostrarDocPrimero = datosPersonalesCargados && docPendiente;
+
+  const formComplete = !!(
+    form.name.trim() &&
+    form.dni.trim() &&
+    form.phone.trim() &&
+    form.emergencyName.trim() &&
+    form.emergencyPhone.trim() &&
+    form.shirtSize &&
+    form.genero &&
+    form.fechaNacimiento &&
+    form.pais.trim() &&
+    form.provincia.trim() &&
+    form.ciudad.trim() &&
+    form.codigoPostal.trim() &&
+    form.domicilio.trim()
+  );
+
+  const docsUploaded = !docPendiente;
+
+  const listoParaSalir = formComplete && docsUploaded;
 
   const sectionDatosPersonales = (
     <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
@@ -548,18 +583,31 @@ export default function PerfilPage() {
                 Editar perfil
               </button>
             ) : (
-              user.onboarding_complete && (
+              (user.onboarding_complete || listoParaSalir) && (
                 <button
-                  onClick={() => {
+                  onClick={listoParaSalir ? handleListoParaSalir : () => {
                     setIsEditing(false);
                     setMessage(null);
                     setDocMessage(null);
                     loadUser(); // Restore state
                   }}
-                  className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                    listoParaSalir 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 hover:border-emerald-700 shadow-emerald-600/15 hover:shadow-emerald-600/25' 
+                      : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
-                  Cancelar
+                  {listoParaSalir ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                      Listo para salir
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-3.5 h-3.5" />
+                      Cancelar
+                    </>
+                  )}
                 </button>
               )
             )}
