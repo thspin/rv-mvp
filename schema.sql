@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS teams (
     coach TEXT,
     instructions TEXT,
     location TEXT,
-    logo_url TEXT DEFAULT '/rv-logo.svg',
+    logo_url TEXT DEFAULT '/rv-logo.png',
     founded_date TEXT,
     specialties TEXT,
     special_instructions TEXT,
@@ -142,7 +142,7 @@ VALUES (
     'Ramiro Valenzuela',
     'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratación. Haremos cuestas acumuladas de 400m en el circuito de cerro.',
     'Mendoza, Argentina',
-    '/rv-logo.svg',
+    '/rv-logo.png',
     '2016-06-08',
     'Trail Running,Ultra Trail,Ruta / Calle,Funcional'
 )
