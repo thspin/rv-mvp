@@ -79,7 +79,6 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
       role: 'atleta',
       onboarding_complete: false,
       apto_medico_status: 'no_entregado',
-      avatar_url: session.user.image || '',
     }
 
     const { data: created, error: createError } = await supabase
