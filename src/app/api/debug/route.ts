@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getCurrentUserActionDetailed } from '@/lib/actions'
 
 export async function GET() {
   const result: Record<string, unknown> = {
@@ -30,7 +31,7 @@ export async function GET() {
     result.session = { error: String(err) }
   }
 
-  // 3. Check Supabase service client
+  // 3. Check Supabase connectivity
   try {
     const { createServiceClient } = await import('@/lib/supabase/service')
     const supabase = createServiceClient()
@@ -38,6 +39,28 @@ export async function GET() {
     result.supabase = error ? { error: error.message, code: error.code } : { ok: true }
   } catch (err) {
     result.supabase = { error: String(err) }
+  }
+
+  // 4. Run the full getCurrentUserActionDetailed (same as what the dashboard calls)
+  try {
+    const userResult = await getCurrentUserActionDetailed()
+    if (userResult.success) {
+      result.getCurrentUser = {
+        success: true,
+        athleteId: userResult.data.id,
+        email: userResult.data.email,
+        onboarding_complete: userResult.data.onboarding_complete,
+        team_id: userResult.data.team_id,
+      }
+    } else {
+      result.getCurrentUser = {
+        success: false,
+        code: userResult.code,
+        error: userResult.error,
+      }
+    }
+  } catch (err) {
+    result.getCurrentUser = { error: String(err) }
   }
 
   return NextResponse.json(result)
