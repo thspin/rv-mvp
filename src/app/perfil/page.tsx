@@ -6,6 +6,8 @@ import { getCurrentUserAction } from '@/lib/actions';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import Navbar from '@/components/Navbar';
+import HeaderAlert from '@/components/HeaderAlert';
+import { isProfileComplete, calculateProfileCompletion } from '@/lib/utils';
 import { 
   User, Save, AlertCircle, Edit3, X, ShieldAlert, 
   MapPin, FileText, Camera, Upload, AlertTriangle
@@ -344,8 +346,183 @@ export default function PerfilPage() {
 
   if (!user) return null;
 
+  const datosPersonalesCargados = !!(
+    user.name?.trim() &&
+    user.dni?.trim() &&
+    user.phone?.trim() &&
+    user.contacto_emergencia_name?.trim() &&
+    user.contacto_emergencia_phone?.trim() &&
+    user.talle_remera &&
+    user.genero &&
+    user.fecha_nacimiento &&
+    user.pais?.trim() &&
+    user.provincia?.trim() &&
+    user.ciudad?.trim() &&
+    user.codigo_postal?.trim() &&
+    user.domicilio?.trim()
+  );
+
+  const docPendiente = !(
+    user.documento_url &&
+    user.documento_status !== 'no_entregado' &&
+    user.documento_status !== 'rechazado' &&
+    user.apto_medico_url &&
+    user.apto_medico_status !== 'no_entregado' &&
+    user.apto_medico_status !== 'rechazado'
+  );
+
+  const mostrarDocPrimero = datosPersonalesCargados && docPendiente;
+
+  const sectionDatosPersonales = (
+    <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+        <User className="w-5 h-5 text-[#1e4e6d]" />
+        Datos Personales
+      </h3>
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6">
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Tipo Documento</span>
+          <p className="text-sm font-bold text-slate-800">{user.tipo_documento || 'DNI'}</p>
+        </div>
+        
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">N° de Documento</span>
+          <p className="text-sm font-bold text-slate-800">{user.dni || 'No especificado'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Género</span>
+          <p className="text-sm font-bold text-slate-800">{user.genero || 'No especificado'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Fecha de Nacimiento</span>
+          <p className="text-sm font-bold text-slate-800">
+            {user.fecha_nacimiento ? new Date(user.fecha_nacimiento).toLocaleDateString("es-AR") : 'No especificada'}
+          </p>
+        </div>
+        
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Teléfono Personal</span>
+          <p className="text-sm font-bold text-slate-800">{user.phone || 'No especificado'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Talle de Remera</span>
+          <p className="text-sm font-bold text-slate-800">{user.talle_remera || 'No especificado'}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const sectionResidencia = (
+    <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+        <MapPin className="w-5 h-5 text-emerald-600" />
+        Datos de Residencia
+      </h3>
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6">
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">País</span>
+          <p className="text-sm font-bold text-slate-800">{user.pais || 'No especificado'}</p>
+        </div>
+        
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Provincia</span>
+          <p className="text-sm font-bold text-slate-800">{user.provincia || 'No especificado'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Ciudad</span>
+          <p className="text-sm font-bold text-slate-800">{user.ciudad || 'No especificado'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Código Postal</span>
+          <p className="text-sm font-bold text-slate-800">{user.codigo_postal || 'No especificado'}</p>
+        </div>
+
+        <div className="space-y-1 sm:col-span-2">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Domicilio</span>
+          <p className="text-sm font-bold text-slate-800">{user.domicilio || 'No especificado'}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const sectionEmergencia = (
+    <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+        <AlertCircle className="w-5 h-5 text-amber-600" />
+        Contacto de Emergencia
+      </h3>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Nombre de Contacto</span>
+          <p className="text-sm font-bold text-slate-800">{user.contacto_emergencia_name || 'No especificado'}</p>
+        </div>
+        
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Teléfono de Emergencia</span>
+          <p className="text-sm font-bold text-slate-800">{user.contacto_emergencia_phone || 'No especificado'}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const sectionDocumentacion = (
+    <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+        <FileText className="w-5 h-5 text-rose-500" />
+        Documentación Requerida
+      </h3>
+      
+      <div className="space-y-4">
+        {/* DNI Document Scan Status */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Foto DNI / Documento</span>
+            <StatusBadge status={user.documento_status} variant="document" className="px-3 py-1 text-[11px]" />
+          </div>
+          {user.documento_url && (
+            <a href={`/api/storage/receipts?filename=${user.documento_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
+              Ver Documento
+            </a>
+          )}
+        </div>
+
+        {/* Medical Apto Status */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Apto Médico</span>
+            <StatusBadge status={user.apto_medico_status} variant="document" className="px-3 py-1 text-[11px]" />
+          </div>
+          {user.apto_medico_url && (
+            <a href={`/api/storage/medical-certs?filename=${user.apto_medico_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
+              Ver Apto Médico
+            </a>
+          )}
+        </div>
+
+        {user.apto_medico_status === 'rechazado' && user.apto_medico_motivo_rechazo && (
+          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-800 flex items-start gap-2.5">
+            <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <strong className="block font-bold">Motivo de rechazo de Apto Médico:</strong>
+              <p className="text-red-700 mt-0.5">{user.apto_medico_motivo_rechazo}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
+      <HeaderAlert user={user} />
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -438,6 +615,25 @@ export default function PerfilPage() {
               </span>
             </div>
             <p className="text-sm text-slate-500 font-medium">{user.email}</p>
+
+            {/* Completado del perfil con barra de progreso */}
+            {(() => {
+              const completion = calculateProfileCompletion(user);
+              return (
+                <div className="mt-2.5 w-full min-w-[200px] sm:min-w-[240px]">
+                  <div className="flex justify-between items-center mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Completado del Perfil</span>
+                    <span className="text-[#1e4e6d] font-black">{completion}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200/50">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${completion}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -445,150 +641,21 @@ export default function PerfilPage() {
         <div className="space-y-6">
           {!isEditing ? (
             /* ================= VIEW MODE ================= */
-            <>
-              {/* DATOS PERSONALES SECTION */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
-                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
-                  <User className="w-5 h-5 text-[#1e4e6d]" />
-                  Datos Personales
-                </h3>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Tipo Documento</span>
-                    <p className="text-sm font-bold text-slate-800">{user.tipo_documento || 'DNI'}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">N° de Documento</span>
-                    <p className="text-sm font-bold text-slate-800">{user.dni || 'No especificado'}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Género</span>
-                    <p className="text-sm font-bold text-slate-800">{user.genero || 'No especificado'}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Fecha de Nacimiento</span>
-                    <p className="text-sm font-bold text-slate-800">
-                      {user.fecha_nacimiento ? new Date(user.fecha_nacimiento).toLocaleDateString("es-AR") : 'No especificada'}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Teléfono Personal</span>
-                    <p className="text-sm font-bold text-slate-800">{user.phone || 'No especificado'}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Talle de Remera</span>
-                    <p className="text-sm font-bold text-slate-800">{user.talle_remera || 'No especificado'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* DATOS DE RESIDENCIA SECTION */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
-                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
-                  <MapPin className="w-5 h-5 text-emerald-600" />
-                  Datos de Residencia
-                </h3>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">País</span>
-                    <p className="text-sm font-bold text-slate-800">{user.pais || 'No especificado'}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Provincia</span>
-                    <p className="text-sm font-bold text-slate-800">{user.provincia || 'No especificado'}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Ciudad</span>
-                    <p className="text-sm font-bold text-slate-800">{user.ciudad || 'No especificado'}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Código Postal</span>
-                    <p className="text-sm font-bold text-slate-800">{user.codigo_postal || 'No especificado'}</p>
-                  </div>
-
-                  <div className="space-y-1 sm:col-span-2">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Domicilio</span>
-                    <p className="text-sm font-bold text-slate-800">{user.domicilio || 'No especificado'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* CONTACTO DE EMERGENCIA SECTION */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
-                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
-                  <AlertCircle className="w-5 h-5 text-amber-600" />
-                  Contacto de Emergencia
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Nombre de Contacto</span>
-                    <p className="text-sm font-bold text-slate-800">{user.contacto_emergencia_name || 'No especificado'}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Teléfono de Emergencia</span>
-                    <p className="text-sm font-bold text-slate-800">{user.contacto_emergencia_phone || 'No especificado'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* DOCUMENTOS Y APTO MEDICO SECTION */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
-                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
-                  <FileText className="w-5 h-5 text-rose-500" />
-                  Documentación Requerida
-                </h3>
-                
-                <div className="space-y-4">
-                  {/* DNI Document Scan Status */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Foto DNI / Documento</span>
-                      <StatusBadge status={user.documento_status} variant="document" className="px-3 py-1 text-[11px]" />
-                    </div>
-                    {user.documento_url && (
-                      <a href={`/api/storage/receipts?filename=${user.documento_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
-                        Ver Documento
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Medical Apto Status */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Apto Médico</span>
-                      <StatusBadge status={user.apto_medico_status} variant="document" className="px-3 py-1 text-[11px]" />
-                    </div>
-                    {user.apto_medico_url && (
-                      <a href={`/api/storage/medical-certs?filename=${user.apto_medico_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
-                        Ver Apto Médico
-                      </a>
-                    )}
-                  </div>
-
-                  {user.apto_medico_status === 'rechazado' && user.apto_medico_motivo_rechazo && (
-                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-800 flex items-start gap-2.5">
-                      <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="block font-bold">Motivo de rechazo de Apto Médico:</strong>
-                        <p className="text-red-700 mt-0.5">{user.apto_medico_motivo_rechazo}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
+            mostrarDocPrimero ? (
+              <>
+                {sectionDocumentacion}
+                {sectionDatosPersonales}
+                {sectionResidencia}
+                {sectionEmergencia}
+              </>
+            ) : (
+              <>
+                {sectionDatosPersonales}
+                {sectionResidencia}
+                {sectionEmergencia}
+                {sectionDocumentacion}
+              </>
+            )
           ) : (
             /* ================= EDIT MODE ================= */
             <div className="space-y-6">

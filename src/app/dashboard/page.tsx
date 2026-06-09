@@ -15,6 +15,7 @@ import {
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { createClient } from '@/lib/supabase/client';
 import Navbar from '@/components/Navbar';
+import HeaderAlert from '@/components/HeaderAlert';
 import {
   Users,
   FileText,
@@ -241,6 +242,7 @@ export default function AthleteDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
+      <HeaderAlert user={user} />
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Navbar from '@/components/Navbar';
+import HeaderAlert from '@/components/HeaderAlert';
+import { isProfileComplete } from '@/lib/utils';
 import { MapPin, Users, ArrowRight, ChevronLeft, Clock, Footprints, Activity, Dumbbell, Mountain, Compass } from 'lucide-react';
 import { Archivo } from 'next/font/google';
 
@@ -105,6 +107,7 @@ export default function EquiposPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
+      <HeaderAlert user={user} />
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -203,13 +206,24 @@ export default function EquiposPage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={() => handleJoinTeam(team.id)}
-                          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          Unirse
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
+                        {isProfileComplete(user) ? (
+                          <button
+                            onClick={() => handleJoinTeam(team.id)}
+                            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            Unirse
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => router.push('/perfil')}
+                            className="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded-full text-[10px] font-black tracking-tight transition-all duration-150 cursor-pointer flex items-center justify-center gap-0.5 border border-slate-300/40"
+                            title="Debes completar tu perfil para unirte a un equipo"
+                          >
+                            Completar Perfil
+                            <ArrowRight className="w-2.5 h-2.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setActiveTeamDetails(team);
