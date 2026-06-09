@@ -137,23 +137,11 @@ export default function EquiposPage() {
   if (!user) return null;
 
   return (
-    <div data-equipos-page className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-8 relative bg-cover bg-center bg-fixed"
-      style={{ backgroundImage: `url('/fondo_web.webp')` }}
-    >
-      <style>{`
-        @media (max-width: 768px) {
-          [data-equipos-page] {
-            background-image: url('/fondo_mobile.webp') !important;
-          }
-        }
-      `}</style>
-      <div className="fixed inset-0 bg-white/40 backdrop-blur-[2px] pointer-events-none z-0" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/rv-logo.png" alt="" aria-hidden="true" className="fixed bottom-4 right-4 w-20 sm:w-28 opacity-[0.12] pointer-events-none z-[1] object-contain" />
+    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
       <HeaderAlert user={user} />
       <Navbar />
 
-      <main className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {actionError && (
           <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl flex items-center justify-between gap-3">
             <span>{actionError}</span>
@@ -171,17 +159,13 @@ export default function EquiposPage() {
           <div className="absolute -left-10 -top-10 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute left-40 -top-20 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
           
-          <div className="flex items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rv-logo.png" alt="RV" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
-            <div className="space-y-4">
-              <h1 className={`${archivoFont.className} text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-slate-900 leading-none`}>
-                Equipos
-              </h1>
-              <p className="text-slate-500 text-sm sm:text-base font-medium max-w-xl">
-                Busca tu equipo para entrenar.
-              </p>
-            </div>
+          <div className="space-y-4">
+            <h1 className={`${archivoFont.className} text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-slate-900 leading-none`}>
+              Equipos
+            </h1>
+            <p className="text-slate-500 text-sm sm:text-base font-medium max-w-xl">
+              Busca tu equipo para entrenar.
+            </p>
           </div>
           <div className="h-[2px] w-20 bg-gradient-to-r from-[#1e4e6d] to-transparent mt-6 rounded-full" />
         </div>
@@ -225,7 +209,7 @@ export default function EquiposPage() {
                       src="/rv-logo.png"
                       alt=""
                       aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-contain opacity-[0.15] scale-150 pointer-events-none select-none"
+                      className="absolute inset-0 w-full h-full object-contain opacity-[0.07] scale-150 pointer-events-none select-none"
                     />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
