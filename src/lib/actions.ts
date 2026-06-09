@@ -5,34 +5,59 @@ import { headers } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase/service'
 import { Athlete, fromDbAthlete } from '@/lib/db'
 
+type ActionResult =
+  | { success: true; data: Athlete }
+  | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'CREATE_ERROR' | 'UNKNOWN' }
+
 export async function getCurrentUserAction(): Promise<Athlete | null> {
+  const result = await getCurrentUserActionDetailed()
+  if (result.success) return result.data
+  console.error(`[getCurrentUserAction] ${result.code}:`, result.error)
+  return null
+}
+
+export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
   try {
+    // 1. Verify Better Auth session
     const session = await auth.api.getSession({
       headers: await headers(),
     })
-    if (!session?.user?.email) return null
+    if (!session?.user?.email) {
+      return { success: false, error: 'No active session', code: 'NO_SESSION' }
+    }
 
     const supabase = createServiceClient()
     const userId = session.user.id
     const userEmail = session.user.email
 
-    const { data: userById } = await supabase
+    // 2. Look up by user_id (fastest path)
+    const { data: userById, error: e1 } = await supabase
       .from('athletes')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle()
 
-    if (userById) {
-      return fromDbAthlete(userById)
+    if (e1) {
+      return { success: false, error: `athletes lookup by user_id failed: ${e1.message} (code: ${e1.code})`, code: 'DB_ERROR' }
     }
 
-    const { data: userByEmail } = await supabase
+    if (userById) {
+      return { success: true, data: fromDbAthlete(userById) }
+    }
+
+    // 3. Fallback: look up by email (migration path)
+    const { data: userByEmail, error: e2 } = await supabase
       .from('athletes')
       .select('*')
       .eq('email', userEmail)
       .maybeSingle()
 
+    if (e2) {
+      return { success: false, error: `athletes lookup by email failed: ${e2.message} (code: ${e2.code})`, code: 'DB_ERROR' }
+    }
+
     if (userByEmail) {
+      // Link existing record to Better Auth user_id
       const { data: updated, error: updateError } = await supabase
         .from('athletes')
         .update({ user_id: userId })
@@ -41,11 +66,12 @@ export async function getCurrentUserAction(): Promise<Athlete | null> {
         .single()
 
       if (!updateError && updated) {
-        return fromDbAthlete(updated)
+        return { success: true, data: fromDbAthlete(updated) }
       }
-      return fromDbAthlete(userByEmail)
+      return { success: true, data: fromDbAthlete(userByEmail) }
     }
 
+    // 4. First login: create new athlete record
     const newAthlete = {
       user_id: userId,
       email: userEmail,
@@ -62,12 +88,16 @@ export async function getCurrentUserAction(): Promise<Athlete | null> {
       .select()
       .single()
 
-    if (!createError && created) {
-      return fromDbAthlete(created)
+    if (createError) {
+      return { success: false, error: `athlete creation failed: ${createError.message} (code: ${createError.code})`, code: 'CREATE_ERROR' }
     }
-  } catch (err) {
-    console.error('Error in getCurrentUserAction:', err)
-  }
 
-  return null
+    if (created) {
+      return { success: true, data: fromDbAthlete(created) }
+    }
+
+    return { success: false, error: 'upsert returned no data', code: 'UNKNOWN' }
+  } catch (err) {
+    return { success: false, error: String(err), code: 'UNKNOWN' }
+  }
 }

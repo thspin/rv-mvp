@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
-import { getCurrentUserAction } from '@/lib/actions';
+import { getCurrentUserActionDetailed } from '@/lib/actions';
 import { Athlete } from '@/lib/db';
 
 export function useAuthGuard(requireOnboarding = true) {
@@ -16,30 +16,26 @@ export function useAuthGuard(requireOnboarding = true) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Still waiting for session check
       if (isPending) return;
 
-      // No session at all → redirect to login
       if (!session?.user) {
         if (!cancelled) router.push('/');
         return;
       }
 
-      // Session exists — fetch athlete profile from DB
-      const currentUser = await getCurrentUserAction();
+      const result = await getCurrentUserActionDetailed();
       if (cancelled) return;
 
-      if (!currentUser) {
-        // DB error or user not created yet — show error instead of looping
-        setAuthError('No se pudo cargar tu perfil. Por favor recargá la página.');
+      if (!result.success) {
+        setAuthError(`Error (${result.code}): ${result.error}`);
         setIsLoading(false);
         return;
       }
 
-      // Redirect new users to complete onboarding
+      const currentUser = result.data;
+
       if (requireOnboarding && !currentUser.onboarding_complete) {
         router.push('/perfil');
-        // Keep isLoading true so the page shows LoadingScreen during navigation
         return;
       }
 
