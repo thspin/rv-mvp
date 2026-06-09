@@ -1,209 +1,819 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { getCurrentUserAsync, updateProfileAsync, Athlete } from '@/lib/db';
+import { useState, useEffect, useReducer } from 'react';
+import { updateProfileAsync, completeOnboardingAsync, Athlete } from '@/lib/db';
+import { getCurrentUserAction } from '@/lib/actions';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import Navbar from '@/components/Navbar';
-import { User, Phone, Ruler, Save, AlertCircle } from 'lucide-react';
+import { 
+  User, Save, AlertCircle, Edit3, X, ShieldAlert, 
+  MapPin, FileText, Camera, Upload, AlertTriangle
+} from 'lucide-react';
+import { Archivo } from 'next/font/google';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { LoadingScreen } from '@/components/ui/loading-screen';
+
+const archivoFont = Archivo({
+  subsets: ['latin'],
+  weight: ['800', '900'],
+});
+
+interface FormState {
+  name: string;
+  genero: string;
+  fechaNacimiento: string;
+  tipoDocumento: string;
+  dni: string;
+  phone: string;
+  shirtSize: string;
+  pais: string;
+  provincia: string;
+  ciudad: string;
+  codigoPostal: string;
+  domicilio: string;
+  emergencyName: string;
+  emergencyPhone: string;
+}
+
+type FormAction =
+  | { type: 'SET_FIELD'; field: keyof FormState; value: string }
+  | { type: 'LOAD_USER'; payload: Partial<FormState> };
+
+const initialFormState: FormState = {
+  name: '', genero: '', fechaNacimiento: '', tipoDocumento: 'DNI',
+  dni: '', phone: '', shirtSize: '',
+  pais: '', provincia: '', ciudad: '', codigoPostal: '', domicilio: '',
+  emergencyName: '', emergencyPhone: '',
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'LOAD_USER':
+      return { ...state, ...action.payload };
+    default:
+      return state;
+  }
+}
 
 export default function PerfilPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<Athlete | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading: authLoading, setUser } = useAuthGuard(false);
+  const { uploadFile, uploading, error: uploadError } = useFileUpload();
+  const [dataLoading, setDataLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showOnboardingPopup, setShowOnboardingPopup] = useState(false);
+  const [form, dispatch] = useReducer(formReducer, initialFormState);
+  const setField = (field: keyof FormState, value: string) => dispatch({ type: 'SET_FIELD', field, value });
 
-  const [dni, setDni] = useState('');
-  const [phone, setPhone] = useState('');
-  const [emergencyName, setEmergencyName] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-  const [shirtSize, setShirtSize] = useState('');
+  // Messages and Upload Statuses
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+  const getAvatarSrc = (avatarUrl?: string) => {
+    if (!avatarUrl) return null;
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('data:')) {
+      return avatarUrl;
+    }
+    return `/api/storage/avatars?filename=${avatarUrl}`;
+  };
 
   const loadUser = async () => {
-    const currentUser = await getCurrentUserAsync();
-    if (!currentUser) {
-      router.push('/');
-      return;
+    if (!user) return;
+    dispatch({ type: 'LOAD_USER', payload: {
+      name: user.name || '',
+      genero: user.genero || '',
+      fechaNacimiento: user.fecha_nacimiento || '',
+      tipoDocumento: user.tipo_documento || 'DNI',
+      dni: user.dni || '',
+      phone: user.phone || '',
+      shirtSize: user.talle_remera || '',
+      pais: user.pais || '',
+      provincia: user.provincia || '',
+      ciudad: user.ciudad || '',
+      codigoPostal: user.codigo_postal || '',
+      domicilio: user.domicilio || '',
+      emergencyName: user.contacto_emergencia_name || '',
+      emergencyPhone: user.contacto_emergencia_phone || '',
+    }});
+    
+    if (!user.onboarding_complete) {
+      setIsEditing(true);
+      setShowOnboardingPopup(true);
     }
-    if (!currentUser.onboarding_complete) {
-      router.push('/onboarding');
-      return;
-    }
-    setUser(currentUser);
-    setDni(currentUser.dni || '');
-    setPhone(currentUser.phone || '');
-    setEmergencyName(currentUser.contacto_emergencia_name || '');
-    setEmergencyPhone(currentUser.contacto_emergencia_phone || '');
-    setShirtSize(currentUser.talle_remera || '');
-    setIsLoading(false);
+    setDataLoading(false);
   };
+
+  useEffect(() => {
+    if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadUser();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     
-    if (!dni.trim() || !phone.trim() || !emergencyName.trim() || !emergencyPhone.trim() || !shirtSize) {
-      setMessage({ type: 'error', text: 'Por favor completa todos los campos requeridos.' });
+    if (
+      !form.name.trim() || !form.dni.trim() || !form.phone.trim() || 
+      !form.emergencyName.trim() || !form.emergencyPhone.trim() || !form.shirtSize ||
+      !form.genero || !form.fechaNacimiento || !form.tipoDocumento ||
+      !form.pais.trim() || !form.provincia.trim() || !form.ciudad.trim() || !form.codigoPostal.trim() || !form.domicilio.trim()
+    ) {
+      setMessage({ type: 'error', text: 'Por favor completa todos los campos de datos personales, residencia y emergencia.' });
       return;
     }
     
     setIsSaving(true);
     try {
-      await updateProfileAsync(user.email, {
-        dni: dni.trim(),
-        phone: phone.trim(),
-        contacto_emergencia_name: emergencyName.trim(),
-        contacto_emergencia_phone: emergencyPhone.trim(),
-        talle_remera: shirtSize
-      });
+      const profileUpdates = {
+        name: form.name.trim(),
+        genero: form.genero,
+        fecha_nacimiento: form.fechaNacimiento,
+        tipo_documento: form.tipoDocumento,
+        dni: form.dni.trim(),
+        phone: form.phone.trim(),
+        talle_remera: form.shirtSize,
+        pais: form.pais.trim(),
+        provincia: form.provincia.trim(),
+        ciudad: form.ciudad.trim(),
+        codigo_postal: form.codigoPostal.trim(),
+        domicilio: form.domicilio.trim(),
+        contacto_emergencia_name: form.emergencyName.trim(),
+        contacto_emergencia_phone: form.emergencyPhone.trim()
+      };
+
+      if (!user.onboarding_complete) {
+        await completeOnboardingAsync(user.email, profileUpdates);
+      } else {
+        await updateProfileAsync(user.email, profileUpdates);
+      }
+
+      const freshUser = await getCurrentUserAction();
+      if (freshUser) setUser(freshUser);
       setMessage({ type: 'success', text: 'Perfil actualizado correctamente.' });
-      loadUser();
-    } catch (error) {
+      setIsEditing(false);
+    } catch {
       setMessage({ type: 'error', text: 'Error al actualizar el perfil.' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse text-slate-600">Cargando...</div>
-      </div>
-    );
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'documento' | 'apto' | 'avatar') => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+      if (isMock) {
+        if (type === 'avatar') {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64data = reader.result as string;
+            await updateProfileAsync(user.email, { avatar_url: base64data });
+            const freshUser = await getCurrentUserAction();
+            if (freshUser) setUser(freshUser);
+            setMessage({ type: 'success', text: 'Foto de perfil actualizada (Demo).' });
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const updates = type === 'documento'
+            ? { documento_url: file.name, documento_status: 'pendiente_verificacion' as const }
+            : { apto_medico_url: file.name, apto_medico_status: 'pendiente_verificacion' as const };
+          await updateProfileAsync(user.email, updates);
+          const freshUser = await getCurrentUserAction();
+          if (freshUser) setUser(freshUser);
+          setMessage({ type: 'success', text: `${type === 'documento' ? 'Documento' : 'Apto médico'} subido correctamente (Demo).` });
+        }
+        return;
+      }
+
+      const bucketName = type === 'documento' || type === 'avatar' ? 'receipts' : 'medical-certs';
+      const fileName = await uploadFile(file, bucketName, user.email, type);
+      if (!fileName) {
+        setMessage({ type: 'error', text: uploadError || 'Error al subir el archivo.' });
+        return;
+      }
+
+      const updates: Partial<Athlete> = type === 'documento'
+        ? { documento_url: fileName, documento_status: 'pendiente_verificacion' }
+        : type === 'avatar'
+        ? { avatar_url: fileName }
+        : { apto_medico_url: fileName, apto_medico_status: 'pendiente_verificacion', apto_medico_motivo_rechazo: undefined };
+
+      await updateProfileAsync(user.email, updates);
+      const freshUser = await getCurrentUserAction();
+      if (freshUser) setUser(freshUser);
+      
+      setMessage({ 
+        type: 'success', 
+        text: type === 'documento' 
+          ? 'Documento subido correctamente.' 
+          : type === 'avatar'
+          ? 'Foto de perfil actualizada correctamente.'
+          : 'Apto médico subido correctamente.' 
+      });
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      setMessage({ type: 'error', text: 'Error al subir el archivo. Intenta nuevamente.' });
+    }
+  };
+
+  if (authLoading || dataLoading) {
+    return <LoadingScreen />;
   }
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Mi Perfil</h1>
-          <p className="text-slate-600">Actualiza tu informacion personal y de contacto.</p>
-        </div>
-
-        {/* USER INFO CARD */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-xl">
-              {user.name ? user.name[0].toUpperCase() : 'U'}
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">{user.name}</h2>
-              <p className="text-sm text-slate-500">{user.email}</p>
-            </div>
+        {/* HEADER & EDIT BUTTON */}
+        <div className="relative mb-8 flex flex-row justify-between items-center border-b border-slate-200/60 pb-6">
+          <div className="space-y-2">
+            <h1 className={`${archivoFont.className} text-4xl sm:text-5xl font-black tracking-tight text-slate-900 leading-none uppercase`}>
+              Mi Perfil
+            </h1>
+          </div>
+          
+          <div>
+            {!isEditing ? (
+              <button
+                onClick={() => {
+                  setIsEditing(true);
+                  setMessage(null);
+                }}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Editar perfil
+              </button>
+            ) : (
+              user.onboarding_complete && (
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setMessage(null);
+                    loadUser(); // Restore state
+                  }}
+                  className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancelar
+                </button>
+              )
+            )}
           </div>
         </div>
 
-        {/* FORM CARD */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* DNI */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <User className="w-4 h-4 text-slate-500" />
-                DNI
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: 32456789"
-                value={dni}
-                onChange={(e) => setDni(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
+        {/* USER INFO CARD */}
+        <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm mb-6 flex flex-col sm:flex-row items-center gap-6 p-6 sm:p-8 text-left relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent rounded-bl-full pointer-events-none" />
+          <div className="relative group flex-shrink-0">
+            {getAvatarSrc(user.avatar_url) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={getAvatarSrc(user.avatar_url)!} 
+                alt={user.name} 
+                className="w-20 h-20 rounded-2xl object-cover shadow-md"
               />
-            </div>
-
-            {/* Teléfono */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Phone className="w-4 h-4 text-slate-500" />
-                Telefono Personal
-              </label>
-              <input
-                type="tel"
-                placeholder="Ej: +54 9 11 2345-6789"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
-              />
-            </div>
-
-            {/* Contacto de Emergencia */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
-              <div className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-slate-500" />
-                Contacto de Emergencia
-              </div>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Nombre completo"
-                  value={emergencyName}
-                  onChange={(e) => setEmergencyName(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
-                />
-                <input
-                  type="tel"
-                  placeholder="Telefono de emergencia"
-                  value={emergencyPhone}
-                  onChange={(e) => setEmergencyPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Talle Remera */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Ruler className="w-4 h-4 text-slate-500" />
-                Talle de Remera
-              </label>
-              <select
-                value={shirtSize}
-                onChange={(e) => setShirtSize(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
-              >
-                <option value="">Selecciona un talle</option>
-                <option value="XS">XS</option>
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="XL">XL</option>
-                <option value="XXL">XXL</option>
-              </select>
-            </div>
-
-            {/* Message */}
-            {message && (
-              <div className={`p-3 rounded-xl text-sm ${
-                message.type === 'success' 
-                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
-                  : 'bg-red-50 border border-red-200 text-red-700'
-              }`}>
-                {message.text}
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#1e4e6d] to-blue-500 flex items-center justify-center text-white font-black text-3xl shadow-md">
+                {user.name ? user.name[0].toUpperCase() : 'U'}
               </div>
             )}
+            
+            {isEditing && (
+              <label 
+                htmlFor="avatar-upload" 
+                className="absolute inset-0 bg-black/55 hover:bg-black/70 rounded-2xl flex flex-col items-center justify-center text-white text-[10px] font-extrabold uppercase cursor-pointer transition-all duration-150 border border-white/20 text-center px-1"
+              >
+                <Camera className="w-5 h-5 mb-0.5" />
+                {uploading ? 'Subiendo...' : 'Cambiar'}
+              </label>
+            )}
+            <input 
+              type="file" 
+              accept="image/*" 
+              id="avatar-upload" 
+              className="hidden" 
+              disabled={uploading}
+              onChange={(e) => handleFileUpload(e, 'avatar')} 
+            />
+          </div>
+          <div className="space-y-1.5 z-10">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className={`${archivoFont.className} text-2xl font-black text-slate-900 leading-tight uppercase`}>
+                {user.name}
+              </h2>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                user.role === 'admin' 
+                  ? 'bg-amber-50 border-amber-200 text-amber-700' 
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              }`}>
+                {user.role === 'admin' ? 'Coordinador' : 'Atleta'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-500 font-medium">{user.email}</p>
+          </div>
+        </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-full shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-            </button>
-          </form>
+        {/* PROFILE SECTIONS CONTAINER */}
+        <div className="space-y-6">
+          {!isEditing ? (
+            /* ================= VIEW MODE ================= */
+            <>
+              {/* DATOS PERSONALES SECTION */}
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+                  <User className="w-5 h-5 text-[#1e4e6d]" />
+                  Datos Personales
+                </h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Tipo Documento</span>
+                    <p className="text-sm font-bold text-slate-800">{user.tipo_documento || 'DNI'}</p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">N° de Documento</span>
+                    <p className="text-sm font-bold text-slate-800">{user.dni || 'No especificado'}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Género</span>
+                    <p className="text-sm font-bold text-slate-800">{user.genero || 'No especificado'}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Fecha de Nacimiento</span>
+                    <p className="text-sm font-bold text-slate-800">
+                      {user.fecha_nacimiento ? new Date(user.fecha_nacimiento).toLocaleDateString("es-AR") : 'No especificada'}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Teléfono Personal</span>
+                    <p className="text-sm font-bold text-slate-800">{user.phone || 'No especificado'}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Talle de Remera</span>
+                    <p className="text-sm font-bold text-slate-800">{user.talle_remera || 'No especificado'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* DATOS DE RESIDENCIA SECTION */}
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+                  <MapPin className="w-5 h-5 text-emerald-600" />
+                  Datos de Residencia
+                </h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">País</span>
+                    <p className="text-sm font-bold text-slate-800">{user.pais || 'No especificado'}</p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Provincia</span>
+                    <p className="text-sm font-bold text-slate-800">{user.provincia || 'No especificado'}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Ciudad</span>
+                    <p className="text-sm font-bold text-slate-800">{user.ciudad || 'No especificado'}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Código Postal</span>
+                    <p className="text-sm font-bold text-slate-800">{user.codigo_postal || 'No especificado'}</p>
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Domicilio</span>
+                    <p className="text-sm font-bold text-slate-800">{user.domicilio || 'No especificado'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CONTACTO DE EMERGENCIA SECTION */}
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                  Contacto de Emergencia
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Nombre de Contacto</span>
+                    <p className="text-sm font-bold text-slate-800">{user.contacto_emergencia_name || 'No especificado'}</p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Teléfono de Emergencia</span>
+                    <p className="text-sm font-bold text-slate-800">{user.contacto_emergencia_phone || 'No especificado'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* DOCUMENTOS Y APTO MEDICO SECTION */}
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+                  <FileText className="w-5 h-5 text-rose-500" />
+                  Documentación Requerida
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* DNI Document Scan Status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Foto DNI / Documento</span>
+                      <StatusBadge status={user.documento_status} variant="document" className="px-3 py-1 text-[11px]" />
+                    </div>
+                    {user.documento_url && (
+                      <a href={`/api/storage/receipts?filename=${user.documento_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
+                        Ver Documento
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Medical Apto Status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">Apto Médico</span>
+                      <StatusBadge status={user.apto_medico_status} variant="document" className="px-3 py-1 text-[11px]" />
+                    </div>
+                    {user.apto_medico_url && (
+                      <a href={`/api/storage/medical-certs?filename=${user.apto_medico_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
+                        Ver Apto Médico
+                      </a>
+                    )}
+                  </div>
+
+                  {user.apto_medico_status === 'rechazado' && user.apto_medico_motivo_rechazo && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-800 flex items-start gap-2.5">
+                      <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block font-bold">Motivo de rechazo de Apto Médico:</strong>
+                        <p className="text-red-700 mt-0.5">{user.apto_medico_motivo_rechazo}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ================= EDIT MODE ================= */
+            <div className="space-y-6">
+              {/* EDIT FORM FIELDS */}
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-10 shadow-sm">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  
+                  {/* DATOS PERSONALES */}
+                  <div className="space-y-5">
+                    <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2 text-left`}>
+                      <User className="w-5 h-5 text-[#1e4e6d]" />
+                      Datos Personales
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      {/* Nombre completo */}
+                      <div className="space-y-1.5 text-left sm:col-span-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre Completo</label>
+                        <input
+                          type="text"
+                          value={form.name}
+                          onChange={(e) => setField('name', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      {/* Tipo Documento */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tipo de Documento</label>
+                        <select
+                          value={form.tipoDocumento}
+                          onChange={(e) => setField('tipoDocumento', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150 cursor-pointer"
+                        >
+                          <option value="DNI">DNI</option>
+                          <option value="Pasaporte">Pasaporte</option>
+                          <option value="LC">L.C.</option>
+                          <option value="LE">L.E.</option>
+                        </select>
+                      </div>
+
+                      {/* N° de Documento (DNI) */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">N° de Documento</label>
+                        <input
+                          type="text"
+                          placeholder="Ej: 32456789"
+                          value={form.dni}
+                          onChange={(e) => setField('dni', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      {/* Género */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Género</label>
+                        <select
+                          value={form.genero}
+                          onChange={(e) => setField('genero', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150 cursor-pointer"
+                        >
+                          <option value="">Selecciona género</option>
+                          <option value="Masculino">Masculino</option>
+                          <option value="Femenino">Femenino</option>
+                          <option value="No Binario">No Binario</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+
+                      {/* Fecha de Nacimiento */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha de Nacimiento</label>
+                        <input
+                          type="date"
+                          value={form.fechaNacimiento}
+                          onChange={(e) => setField('fechaNacimiento', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      {/* Teléfono */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Telefono Personal</label>
+                        <input
+                          type="tel"
+                          placeholder="Ej: +54 9 11 2345-6789"
+                          value={form.phone}
+                          onChange={(e) => setField('phone', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      {/* Talle Remera */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Talle de Remera</label>
+                        <select
+                          value={form.shirtSize}
+                          onChange={(e) => setField('shirtSize', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150 cursor-pointer"
+                        >
+                          <option value="">Selecciona un talle</option>
+                          <option value="XS">XS</option>
+                          <option value="S">S</option>
+                          <option value="M">M</option>
+                          <option value="L">L</option>
+                          <option value="XL">XL</option>
+                          <option value="XXL">XXL</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DATOS DE RESIDENCIA */}
+                  <div className="space-y-5 pt-4">
+                    <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2 text-left`}>
+                      <MapPin className="w-5 h-5 text-emerald-600" />
+                      Datos de Residencia
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">País</label>
+                        <input
+                          type="text"
+                          value={form.pais}
+                          onChange={(e) => setField('pais', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Provincia</label>
+                        <input
+                          type="text"
+                          value={form.provincia}
+                          onChange={(e) => setField('provincia', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Ciudad</label>
+                        <input
+                          type="text"
+                          value={form.ciudad}
+                          onChange={(e) => setField('ciudad', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Código Postal</label>
+                        <input
+                          type="text"
+                          value={form.codigoPostal}
+                          onChange={(e) => setField('codigoPostal', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 text-left sm:col-span-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Domicilio</label>
+                        <input
+                          type="text"
+                          value={form.domicilio}
+                          onChange={(e) => setField('domicilio', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CONTACTO DE EMERGENCIA */}
+                  <div className="space-y-5 pt-4">
+                    <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2 text-left`}>
+                      <AlertCircle className="w-5 h-5 text-amber-600" />
+                      Contacto de Emergencia
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre de Contacto</label>
+                        <input
+                          type="text"
+                          placeholder="Nombre completo"
+                          value={form.emergencyName}
+                          onChange={(e) => setField('emergencyName', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Teléfono de Emergencia</label>
+                        <input
+                          type="tel"
+                          placeholder="Telefono de emergencia"
+                          value={form.emergencyPhone}
+                          onChange={(e) => setField('emergencyPhone', e.target.value)}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message Alert */}
+                  {message && (
+                    <div className={`p-4 rounded-xl text-sm font-medium ${
+                      message.type === 'success' 
+                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                        : 'bg-red-50 border border-red-200 text-red-700'
+                    }`}>
+                      {message.text}
+                    </div>
+                  )}
+
+                  {/* Save Button */}
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="w-full py-4 bg-[#1e4e6d] hover:bg-[#153850] text-white font-bold text-sm rounded-full shadow-lg shadow-[#1e4e6d]/10 hover:shadow-[#1e4e6d]/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Save className="w-4 h-4" />
+                      {isSaving ? 'Guardando...' : 'Guardar Datos del Perfil'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* UPLOAD DOCUMENTATION BLOCK (ONLY IN EDIT MODE) */}
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-10 shadow-sm text-left space-y-6">
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+                  <FileText className="w-5 h-5 text-rose-500" />
+                  Actualizar Documentación
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Photo DNI Upload */}
+                  <div className="space-y-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1">Foto de DNI / Documento</span>
+                      <p className="text-xs text-slate-500 mb-3">Sube una imagen/PDF claro del frente de tu documento.</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-semibold">Estado actual:</span>
+                        <StatusBadge status={user.documento_status} variant="document" className="px-3 py-1 text-[11px]" />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploading ? 'Subiendo...' : 'Seleccionar Archivo (PDF/Imagen)'}
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleFileUpload(e, 'documento')}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                      <label className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                        <Camera className="w-3.5 h-3.5" />
+                        {uploading ? 'Tomando...' : 'Tomar Foto con Cámara'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) => handleFileUpload(e, 'documento')}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Apto Medico Upload */}
+                  <div className="space-y-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1">Certificado de Apto Médico</span>
+                      <p className="text-xs text-slate-500 mb-3">Sube tu certificado médico firmado y vigente.</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-semibold">Estado actual:</span>
+                        <StatusBadge status={user.apto_medico_status} variant="document" className="px-3 py-1 text-[11px]" />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploading ? 'Subiendo...' : 'Seleccionar Archivo (PDF/Imagen)'}
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleFileUpload(e, 'apto')}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                      <label className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                        <Camera className="w-3.5 h-3.5" />
+                        {uploading ? 'Tomando...' : 'Tomar Foto con Cámara'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) => handleFileUpload(e, 'apto')}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* ONBOARDING WARNING POPUP */}
+      {showOnboardingPopup && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#e2edf6] text-slate-800 rounded-[32px] overflow-hidden shadow-2xl max-w-md w-full border border-white/45 p-8 flex flex-col items-center text-center space-y-6 animate-modal-zoom-in">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 shadow-sm">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h2 className={`${archivoFont.className} text-2xl font-black uppercase tracking-tight text-slate-900`}>
+                Completa tu Perfil
+              </h2>
+              <p className="text-slate-600 text-sm leading-relaxed font-medium">
+                Deberás completar todos tus datos personales, de residencia y de contacto de emergencia para poder unirte a un equipo y comenzar a entrenar.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowOnboardingPopup(false)}
+              className="w-full py-3 bg-[#1e4e6d] hover:bg-[#153850] text-white font-bold text-sm rounded-full transition-all cursor-pointer shadow-md"
+            >
+              Completar Perfil
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

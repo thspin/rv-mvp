@@ -1,14 +1,65 @@
 -- ============================================================================
--- SCRIPT DE CREACION DE TABLAS Y RLS PARA RV EN SUPABASE
+-- SCRIPT DE CREACION DE TABLAS PARA RV
+-- Auth: Better Auth | DB: Supabase PostgreSQL
 -- ============================================================================
 
 -- 1. Habilitar extension para UUIDs (si no esta habilitada)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. Eliminar tablas si existen (opcional, para resetear)
--- DROP TABLE IF EXISTS payments;
--- DROP TABLE IF EXISTS athletes;
--- DROP TABLE IF EXISTS teams;
+-- ============================================================================
+-- TABLAS DE BETTER AUTH
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS "user" (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    image TEXT,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
+    role TEXT DEFAULT 'atleta'
+);
+
+CREATE TABLE IF NOT EXISTS session (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    "expiresAt" TIMESTAMP NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS account (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    "accountId" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "accessToken" TEXT,
+    "refreshToken" TEXT,
+    "accessTokenExpiresAt" TIMESTAMP,
+    "refreshTokenExpiresAt" TIMESTAMP,
+    scope TEXT,
+    "idToken" TEXT,
+    password TEXT,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS verification (
+    id TEXT PRIMARY KEY,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    "expiresAt" TIMESTAMP NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- ============================================================================
+-- TABLAS DE APLICACION
+-- ============================================================================
 
 -- 3. Crear tabla de Equipos (teams)
 CREATE TABLE IF NOT EXISTS teams (
@@ -20,13 +71,17 @@ CREATE TABLE IF NOT EXISTS teams (
     coach TEXT,
     instructions TEXT,
     location TEXT,
-    logo_url TEXT DEFAULT '/rv-logo.svg'
+    logo_url TEXT DEFAULT '/rv-logo.svg',
+    founded_date TEXT,
+    specialties TEXT,
+    special_instructions TEXT,
+    google_maps_url TEXT
 );
 
 -- 4. Crear tabla de Atletas (athletes)
 CREATE TABLE IF NOT EXISTS athletes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT UNIQUE REFERENCES "user"(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     role TEXT CHECK (role IN ('atleta', 'admin')) DEFAULT 'atleta',
@@ -48,7 +103,18 @@ CREATE TABLE IF NOT EXISTS athletes (
     payment_status TEXT CHECK (payment_status IN ('Pendiente_Pago', 'Pendiente_Verificacion', 'Pagado', 'Vencido')),
     payment_receipt_url TEXT,
     payment_method TEXT,
-    payment_motivo_rechazo TEXT
+    payment_motivo_rechazo TEXT,
+    genero TEXT,
+    fecha_nacimiento TEXT,
+    tipo_documento TEXT,
+    pais TEXT,
+    provincia TEXT,
+    ciudad TEXT,
+    codigo_postal TEXT,
+    domicilio TEXT,
+    documento_url TEXT,
+    documento_status TEXT CHECK (documento_status IN ('no_entregado', 'pendiente_verificacion', 'vigente', 'rechazado')) DEFAULT 'no_entregado',
+    avatar_url TEXT
 );
 
 -- 5. Crear tabla de Pagos (payments)
@@ -66,8 +132,7 @@ CREATE TABLE IF NOT EXISTS payments (
 -- SEMILLAS INICIALES (SEED DATA)
 -- ============================================================================
 
--- Sembrar equipo por defecto con el UUID que espera la aplicacion
-INSERT INTO teams (id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url)
+INSERT INTO teams (id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url, founded_date, specialties)
 VALUES (
     'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     'RV equipo de montaña',
@@ -77,93 +142,35 @@ VALUES (
     'Ramiro Valenzuela',
     'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratación. Haremos cuestas acumuladas de 400m en el circuito de cerro.',
     'Mendoza, Argentina',
-    '/rv-logo.svg'
+    '/rv-logo.svg',
+    '2016-06-08',
+    'Trail Running,Ultra Trail,Ruta / Calle,Funcional'
 )
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- POLITICAS DE SEGURIDAD (ROW LEVEL SECURITY - RLS)
+-- RLS DESACTIVADO - Autorizacion manejada en capa de aplicacion via service role
 -- ============================================================================
 
--- Habilitar RLS en las tablas
-ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE athletes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teams DISABLE ROW LEVEL SECURITY;
+ALTER TABLE athletes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 
--- Funcion helper para verificar admin (evita recursion infinita en RLS)
-CREATE OR REPLACE FUNCTION public.is_admin(uid uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM athletes
-    WHERE athletes.user_id = uid AND athletes.role = 'admin'
-  );
-$$;
+-- ============================================================================
+-- MIGRACION DE FK: athletes.user_id de auth.users a "user"(id) de Better Auth
+-- Ejecutar solo si ya existen datos con Supabase Auth
+-- ============================================================================
 
--- 1. Politicas para TEAMS
--- Lectura publica para usuarios autenticados
-CREATE POLICY "Permitir lectura de equipos a usuarios autenticados" 
-ON teams FOR SELECT 
-TO authenticated 
-USING (true);
+-- Paso 1: Drop FK antigua (si existe)
+-- ALTER TABLE athletes DROP CONSTRAINT IF EXISTS athletes_user_id_fkey;
 
--- Escritura restringida a administradores
-CREATE POLICY "Permitir edicion de equipos solo a administradores" 
-ON teams FOR ALL 
-TO authenticated 
-USING (
-    public.is_admin(auth.uid())
-);
+-- Paso 2: Migrar datos - crear registros en "user" basados en athletes existentes
+-- INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+-- SELECT user_id, name, email, true, now(), now()
+-- FROM athletes
+-- WHERE user_id IS NOT NULL
+-- ON CONFLICT (id) DO NOTHING;
 
--- 2. Politicas para ATHLETES
--- Permitir que un usuario lea su propio perfil o que un admin lea todos
-CREATE POLICY "Permitir lectura de perfiles propia o de admins" 
-ON athletes FOR SELECT 
-TO authenticated 
-USING (
-    user_id = auth.uid() 
-    OR public.is_admin(auth.uid())
-);
-
--- Permitir que un usuario modifique su propio perfil o que un admin modifique todos
-CREATE POLICY "Permitir edicion de perfil propia o de admins" 
-ON athletes FOR UPDATE 
-TO authenticated 
-USING (
-    user_id = auth.uid() 
-    OR public.is_admin(auth.uid())
-)
-WITH CHECK (
-    user_id = auth.uid() 
-    OR public.is_admin(auth.uid())
-);
-
--- Permitir inserts durante el primer registro (ej. getCurrentUserAsync crea el atleta)
-CREATE POLICY "Permitir insercion a usuarios autenticados" 
-ON athletes FOR INSERT 
-TO authenticated 
-WITH CHECK (
-    user_id = auth.uid()
-);
-
--- 3. Politicas para PAYMENTS
--- Permitir que el atleta lea su historial de pagos o que el admin lea todos
-CREATE POLICY "Permitir lectura de pagos propia o de admins" 
-ON payments FOR SELECT 
-TO authenticated 
-USING (
-    athlete_email = (SELECT email FROM athletes WHERE user_id = auth.uid() LIMIT 1)
-    OR public.is_admin(auth.uid())
-);
-
--- Permitir inserciones a atletas (para simular reportes de pago) y administradores
-CREATE POLICY "Permitir insercion de pagos a atletas y admins" 
-ON payments FOR INSERT 
-TO authenticated 
-WITH CHECK (
-    athlete_email = (SELECT email FROM athletes WHERE user_id = auth.uid() LIMIT 1)
-    OR public.is_admin(auth.uid())
-);
+-- Paso 3: Agregar nueva FK
+-- ALTER TABLE athletes ADD CONSTRAINT athletes_user_id_fkey
+--   FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE;

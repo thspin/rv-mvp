@@ -1,5 +1,5 @@
-// Base de datos con Supabase para RV
 import { createClient } from '@/lib/supabase/client'
+import { addMonthsWithClamp } from '@/lib/utils'
 
 export interface Team {
   id: string;
@@ -11,6 +11,47 @@ export interface Team {
   instructions: string;
   location: string;
   logo_url: string;
+  founded_date?: string;
+  specialties?: string;
+  special_instructions?: string;
+  google_maps_url?: string;
+}
+
+export interface TrainingShift {
+  id: string;
+  name: string;
+  days: string;
+  time: string;
+  location: string;
+}
+
+export interface ShiftInstructions {
+  general?: string;
+  shifts: Record<string, string>;
+}
+
+export function parseTrainingDays(trainingDaysStr: string | undefined | null): TrainingShift[] | null {
+  if (!trainingDaysStr) return null;
+  try {
+    const parsed = JSON.parse(trainingDaysStr);
+    if (Array.isArray(parsed) && parsed.every(item => item && typeof item === 'object' && 'id' in item && 'name' in item)) {
+      return parsed as TrainingShift[];
+    }
+  } catch {
+  }
+  return null;
+}
+
+export function parseInstructions(instructionsStr: string | undefined | null): ShiftInstructions | null {
+  if (!instructionsStr) return null;
+  try {
+    const parsed = JSON.parse(instructionsStr);
+    if (parsed && typeof parsed === 'object' && 'shifts' in parsed) {
+      return parsed as ShiftInstructions;
+    }
+  } catch {
+  }
+  return null;
 }
 
 export interface Athlete {
@@ -21,7 +62,7 @@ export interface Athlete {
   role: 'atleta' | 'admin' | null;
   onboarding_complete: boolean;
   dni?: string;
-  phone?: string; // Teléfono personal del atleta
+  phone?: string;
   talle_remera?: string;
   contacto_emergencia_name?: string;
   contacto_emergencia_phone?: string;
@@ -38,6 +79,17 @@ export interface Athlete {
   payment_receipt_url?: string;
   payment_method?: string;
   payment_motivo_rechazo?: string;
+  genero?: string;
+  fecha_nacimiento?: string;
+  tipo_documento?: string;
+  pais?: string;
+  provincia?: string;
+  ciudad?: string;
+  codigo_postal?: string;
+  domicilio?: string;
+  documento_url?: string;
+  documento_status?: 'no_entregado' | 'pendiente_verificacion' | 'vigente' | 'rechazado';
+  avatar_url?: string;
 }
 
 export interface Payment {
@@ -50,7 +102,6 @@ export interface Payment {
   status: 'aprobado' | 'rechazado';
 }
 
-// Mapeo de camelCase a snake_case para la base de datos
 function toSnakeCase(athlete: Partial<Athlete>): Record<string, unknown> {
   const data: Record<string, unknown> = {
     email: athlete.email,
@@ -75,6 +126,17 @@ function toSnakeCase(athlete: Partial<Athlete>): Record<string, unknown> {
     payment_receipt_url: athlete.payment_receipt_url,
     payment_method: athlete.payment_method,
     payment_motivo_rechazo: athlete.payment_motivo_rechazo,
+    genero: athlete.genero,
+    fecha_nacimiento: athlete.fecha_nacimiento,
+    tipo_documento: athlete.tipo_documento,
+    pais: athlete.pais,
+    provincia: athlete.provincia,
+    ciudad: athlete.ciudad,
+    codigo_postal: athlete.codigo_postal,
+    domicilio: athlete.domicilio,
+    documento_url: athlete.documento_url,
+    documento_status: athlete.documento_status,
+    avatar_url: athlete.avatar_url,
   };
 
   if (athlete.user_id !== undefined) {
@@ -84,8 +146,7 @@ function toSnakeCase(athlete: Partial<Athlete>): Record<string, unknown> {
   return data;
 }
 
-// Mapeo de snake_case a camelCase desde la DB
-function fromDbAthlete(row: Record<string, unknown>): Athlete {
+export function fromDbAthlete(row: Record<string, unknown>): Athlete {
   return {
     id: row.id as string,
     user_id: row.user_id as string | undefined,
@@ -111,6 +172,17 @@ function fromDbAthlete(row: Record<string, unknown>): Athlete {
     payment_receipt_url: row.payment_receipt_url as string | undefined,
     payment_method: row.payment_method as string | undefined,
     payment_motivo_rechazo: row.payment_motivo_rechazo as string | undefined,
+    genero: row.genero as string | undefined,
+    fecha_nacimiento: row.fecha_nacimiento as string | undefined,
+    tipo_documento: row.tipo_documento as string | undefined,
+    pais: row.pais as string | undefined,
+    provincia: row.provincia as string | undefined,
+    ciudad: row.ciudad as string | undefined,
+    codigo_postal: row.codigo_postal as string | undefined,
+    domicilio: row.domicilio as string | undefined,
+    documento_url: row.documento_url as string | undefined,
+    documento_status: row.documento_status as Athlete['documento_status'],
+    avatar_url: row.avatar_url as string | undefined,
   };
 }
 
@@ -124,7 +196,11 @@ function fromDbTeam(row: Record<string, unknown>): Team {
     coach: (row.coach || '') as string,
     instructions: (row.instructions || '') as string,
     location: (row.location || '') as string,
-    logo_url: (row.logo_url || '/rv-logo.svg') as string,
+    logo_url: (row.logo_url || '/rv-logo.png') as string,
+    founded_date: (row.founded_date || '') as string,
+    specialties: (row.specialties || '') as string,
+    special_instructions: (row.special_instructions || '') as string,
+    google_maps_url: (row.google_maps_url || '') as string,
   };
 }
 
@@ -140,154 +216,87 @@ function fromDbPayment(row: Record<string, unknown>): Payment {
   };
 }
 
-// Helpers para cookie-based demo access en el navegador (evita fugas en HMR/serverless global state)
-function getDemoEmail(): string | null {
-  if (typeof window === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|; )demo_email=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-export function setCurrentUserEmail(email: string | null) {
-  if (typeof window !== 'undefined') {
-    if (email) {
-      document.cookie = `demo_email=${encodeURIComponent(email)}; path=/; max-age=86400`;
-    } else {
-      document.cookie = 'demo_email=; path=/; max-age=0';
-    }
-  }
-}
-
-export function initializeDB() {
-  // No-op: La base de datos está en Supabase
-}
-
-// Clamping de meses para evitar saltos incorrectos (ej: 31 de Enero + 1 mes = 3 de Marzo)
-function addMonthsWithClamp(date: Date, months: number): Date {
-  const result = new Date(date.getTime());
-  const expectedMonth = (result.getMonth() + months) % 12;
-  result.setMonth(result.getMonth() + months);
-  // Si el mes resultante no coincide con el esperado, retrocedemos al último día del mes anterior
-  if (result.getMonth() !== expectedMonth) {
-    result.setDate(0);
-  }
-  return result;
-}
-
 // =========== Team Operations ===========
 
 export async function getTeamAsync(teamId?: string): Promise<Team | null> {
   try {
-    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-    if (isMock) {
-      const targetId = teamId || 'mock-team-id';
-      return {
-        id: targetId,
-        name: 'RV Entrenamientos',
-        description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de run en todos los niveles.',
-        whatsapp_url: 'https://chat.whatsapp.com/RVEquipoRunSimulado',
-        training_days: 'Martes y Jueves 19:00 hs, Sabados 8:00 hs',
-        coach: 'Raul Vergara',
-        instructions: 'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratacion.',
-        location: 'La Rioja, Argentina',
-        logo_url: '/rv-logo.svg',
-      };
-    }
-
-    const supabase = createClient()
-    let query = supabase.from('teams').select('*')
+    const supabase = createClient();
+    let query = supabase.from('teams').select('*');
     if (teamId) {
-      query = query.eq('id', teamId)
+      query = query.eq('id', teamId);
     }
-    const { data, error } = await query.limit(1).maybeSingle()
-    if (error) throw error
-    return data ? fromDbTeam(data) : null
+    const { data, error } = await query.limit(1).maybeSingle();
+    if (error) throw error;
+    return data ? fromDbTeam(data) : null;
   } catch (err) {
-    console.error('Error in getTeamAsync:', err)
-    return null
+    console.error('Error in getTeamAsync:', err);
+    return null;
   }
 }
 
 export async function getTeamById(id: string): Promise<Team | null> {
-  return getTeamAsync(id)
+  return getTeamAsync(id);
 }
 
-// Sync version for compatibility (returns default team)
 export function getTeam(): Team {
   return {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    name: 'RV Entrenamientos',
-    description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de run en todos los niveles.',
-    whatsapp_url: 'https://chat.whatsapp.com/RVEquipoMontanaSimulado',
-    training_days: 'Martes y Jueves 19:00 hs, Sabados 8:00 hs',
-    coach: 'Raul Vergara',
-    instructions: 'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratacion.',
-    location: 'La Rioja, Argentina',
-    logo_url: '/rv-logo.svg',
-  }
+    name: 'RV entrenamientos',
+    description: '',
+    whatsapp_url: '',
+    training_days: '',
+    coach: '',
+    instructions: '',
+    location: '',
+    logo_url: '/rv-logo.png',
+  };
 }
 
 export async function updateTeamInstructionsAsync(instructions: string): Promise<void> {
   try {
-    const supabase = createClient()
-    const activeTeam = await getTeamAsync()
+    const supabase = createClient();
+    const activeTeam = await getTeamAsync();
     if (activeTeam?.id) {
       const { error } = await supabase
         .from('teams')
         .update({ instructions })
-        .eq('id', activeTeam.id)
-      if (error) throw error
+        .eq('id', activeTeam.id);
+      if (error) throw error;
     }
   } catch (err) {
-    console.error('Error in updateTeamInstructionsAsync:', err)
+    console.error('Error in updateTeamInstructionsAsync:', err);
   }
 }
 
 export function updateTeamInstructions(instructions: string) {
-  updateTeamInstructionsAsync(instructions)
+  updateTeamInstructionsAsync(instructions);
 }
 
 export async function updateTeam(id: string, updates: Partial<Team>): Promise<void> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
     const { error } = await supabase
       .from('teams')
       .update(updates)
-      .eq('id', id)
-    if (error) throw error
+      .eq('id', id);
+    if (error) throw error;
   } catch (err) {
-    console.error('Error in updateTeam:', err)
+    console.error('Error in updateTeam:', err);
   }
 }
 
 export async function getTeamsAsync(): Promise<Team[]> {
   try {
-    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-    if (isMock) {
-      return [
-        {
-          id: 'mock-team-id',
-          name: 'RV Entrenamientos',
-          description: 'Grupo de entrenamiento especializado en Trail Running, ultra maratones y carreras de run en todos los niveles.',
-          whatsapp_url: 'https://chat.whatsapp.com/RVEquipoRunSimulado',
-          training_days: 'Martes y Jueves 19:00 hs, Sabados 8:00 hs',
-          coach: 'Raul Vergara',
-          instructions: 'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratacion.',
-          location: 'La Rioja, Argentina',
-          logo_url: '/rv-logo.svg',
-        }
-      ];
-    }
-
-    const supabase = createClient()
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('teams')
       .select('*')
-      .order('name')
-    if (error) throw error
-    return data ? data.map(fromDbTeam) : []
+      .order('name');
+    if (error) throw error;
+    return data ? data.map(fromDbTeam) : [];
   } catch (err) {
-    console.error('Error in getTeamsAsync:', err)
-    return []
+    console.error('Error in getTeamsAsync:', err);
+    return [];
   }
 }
 
@@ -295,293 +304,100 @@ export async function getTeamsAsync(): Promise<Team[]> {
 
 export async function getAthletesAsync(): Promise<Athlete[]> {
   try {
-    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-    if (isMock) {
-      return [
-        {
-          id: 'mock-admin-id',
-          user_id: 'mock-admin-user-id',
-          email: 'admin@demo.com',
-          name: 'Raúl Vergara',
-          role: 'admin',
-          onboarding_complete: true,
-          phone: '+5493804000000',
-          team_id: 'mock-team-id',
-          team_status: 'activo',
-        },
-        {
-          id: 'mock-athlete-id',
-          user_id: 'mock-user-id',
-          email: 'atleta@demo.com',
-          name: 'Atleta de Prueba',
-          role: 'atleta',
-          onboarding_complete: true,
-          dni: '12345678',
-          phone: '+5491123456789',
-          team_id: 'mock-team-id',
-          team_status: 'activo',
-        }
-      ];
-    }
-
-    const supabase = createClient()
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
-      .order('name')
-    
-    if (error) throw error
-    return data ? data.map(fromDbAthlete) : []
+      .order('name');
+    if (error) throw error;
+    return data ? data.map(fromDbAthlete) : [];
   } catch (err) {
-    console.error('Error in getAthletesAsync:', err)
-    return []
+    console.error('Error in getAthletesAsync:', err);
+    return [];
   }
 }
 
 export async function getAllAthletes(): Promise<Athlete[]> {
-  return getAthletesAsync()
+  return getAthletesAsync();
 }
 
 export function getAthletes(): Athlete[] {
-  return []
+  return [];
 }
 
 export async function getAthleteByEmail(email: string): Promise<Athlete | null> {
   try {
-    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-    if (isMock) {
-      if (email === 'admin@demo.com') {
-        return {
-          id: 'mock-admin-id',
-          user_id: 'mock-admin-user-id',
-          email: 'admin@demo.com',
-          name: 'Raúl Vergara',
-          role: 'admin',
-          onboarding_complete: true,
-          phone: '+5493804000000',
-          team_id: 'mock-team-id',
-          team_status: 'activo',
-        };
-      }
-      if (email === 'atleta@demo.com') {
-        return {
-          id: 'mock-athlete-id',
-          user_id: 'mock-user-id',
-          email: 'atleta@demo.com',
-          name: 'Atleta de Prueba',
-          role: 'atleta',
-          onboarding_complete: true,
-          dni: '12345678',
-          phone: '+5491123456789',
-          team_id: 'mock-team-id',
-          team_status: 'activo',
-        };
-      }
-    }
-
-    const supabase = createClient()
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
       .eq('email', email)
-      .maybeSingle()
-    if (error) throw error
-    return data ? fromDbAthlete(data) : null
+      .maybeSingle();
+    if (error) throw error;
+    return data ? fromDbAthlete(data) : null;
   } catch (err) {
-    console.error('Error in getAthleteByEmail:', err)
-    return null
+    console.error('Error in getAthleteByEmail:', err);
+    return null;
   }
-}
-
-export async function getCurrentUserAsync(): Promise<Athlete | null> {
-  try {
-    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-    if (isMock) {
-      const demoEmail = getDemoEmail();
-      if (!demoEmail) return null;
-      return {
-        id: demoEmail === 'admin@demo.com' ? 'mock-admin-id' : 'mock-athlete-id',
-        user_id: demoEmail === 'admin@demo.com' ? 'mock-admin-user-id' : 'mock-user-id',
-        email: demoEmail,
-        name: demoEmail === 'admin@demo.com' ? 'Raúl Vergara' : 'Atleta de Prueba',
-        role: demoEmail === 'admin@demo.com' ? 'admin' : 'atleta',
-        onboarding_complete: true,
-        dni: '12345678',
-        phone: demoEmail === 'admin@demo.com' ? '+5493804000000' : '+5491123456789',
-        talle_remera: 'M',
-        contacto_emergencia_name: 'Contacto Emergencia',
-        contacto_emergencia_phone: '+5491198765432',
-        team_id: 'mock-team-id',
-        team_status: 'activo',
-        payment_status: 'Pagado',
-      };
-    }
-
-    const supabase = createClient()
-    
-    // 1. Verificar si hay un usuario de Supabase autenticado
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (user?.email) {
-      // Intentar buscar por user_id primero para máxima seguridad
-      const { data: userById, error: errorById } = await supabase
-        .from('athletes')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      
-      if (userById) {
-        return fromDbAthlete(userById)
-      }
-      
-      // Si no tiene user_id configurado, buscar por email para asociarlo
-      const { data: userByEmail, error: errorByEmail } = await supabase
-        .from('athletes')
-        .select('*')
-        .eq('email', user.email)
-        .maybeSingle()
-      
-      if (userByEmail) {
-        // Enlazar user_id para futuras consultas
-        const { data: updated, error: updateError } = await supabase
-          .from('athletes')
-          .update({ user_id: user.id })
-          .eq('id', userByEmail.id)
-          .select()
-          .single()
-        
-        if (!updateError && updated) {
-          return fromDbAthlete(updated)
-        }
-        return fromDbAthlete(userByEmail)
-      }
-      
-      // Si no existe ningún registro, lo creamos de forma segura mediante upsert
-      const newAthlete = {
-        user_id: user.id,
-        email: user.email,
-        name: user.user_metadata?.full_name || user.email.split('@')[0],
-        role: 'atleta',
-        onboarding_complete: false,
-        apto_medico_status: 'no_entregado',
-      }
-      
-      const { data: created, error: createError } = await supabase
-        .from('athletes')
-        .upsert(newAthlete, { onConflict: 'user_id' })
-        .select()
-        .single()
-      
-      if (!createError && created) {
-        return fromDbAthlete(created)
-      }
-    }
-    
-    // 2. Si no hay Supabase Auth, comprobar cookie de Demo local
-    const demoEmail = getDemoEmail()
-    if (demoEmail) {
-      const { data, error } = await supabase
-        .from('athletes')
-        .select('*')
-        .eq('email', demoEmail)
-        .maybeSingle()
-      
-      if (!error && data) {
-        return fromDbAthlete(data)
-      }
-    }
-  } catch (err) {
-    console.error('Error in getCurrentUserAsync:', err)
-  }
-  
-  return null
-}
-
-// Sync version for compatibility
-export function getCurrentUser(): Athlete | null {
-  return null // Debe usarse la versión asíncrona
 }
 
 export async function updateAthleteProfileAsync(email: string, updates: Partial<Athlete>): Promise<Athlete | null> {
   try {
-    const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-    if (isMock) {
-      const demoEmail = getDemoEmail() || email;
-      return {
-        id: 'mock-athlete-id',
-        user_id: 'mock-user-id',
-        email: demoEmail,
-        name: 'Atleta de Prueba',
-        role: demoEmail === 'admin@demo.com' ? 'admin' : 'atleta',
-        onboarding_complete: true,
-        dni: '12345678',
-        phone: '+5491123456789',
-        talle_remera: 'M',
-        contacto_emergencia_name: 'Contacto Emergencia',
-        contacto_emergencia_phone: '+5491198765432',
-        team_id: updates.team_id !== undefined ? updates.team_id : 'mock-team-id',
-        team_status: updates.team_status !== undefined ? updates.team_status : 'activo',
-        payment_status: 'Pagado',
-        ...updates,
-      };
-    }
+    const supabase = createClient();
 
-    const supabase = createClient()
-    
-    // Filtrar valores indefinidos y mapear a snake_case
-    const dbUpdates: Record<string, unknown> = {}
-    const snakeCaseData = toSnakeCase(updates)
-    
+    const dbUpdates: Record<string, unknown> = {};
+    const snakeCaseData = toSnakeCase(updates);
+
     for (const [key, value] of Object.entries(snakeCaseData)) {
       if (value !== undefined) {
-        dbUpdates[key] = value
+        dbUpdates[key] = value;
       }
     }
-    
+
     const { data, error } = await supabase
       .from('athletes')
       .update(dbUpdates)
       .eq('email', email)
       .select()
-      .single()
-    
-    if (error) throw error
-    return data ? fromDbAthlete(data) : null
+      .single();
+
+    if (error) throw error;
+    return data ? fromDbAthlete(data) : null;
   } catch (err) {
-    console.error('Error in updateAthleteProfileAsync:', err)
-    return null
+    console.error('Error in updateAthleteProfileAsync:', err);
+    return null;
   }
 }
 
 export function updateAthleteProfile(email: string, updates: Partial<Athlete>): Athlete | null {
-  updateAthleteProfileAsync(email, updates)
-  return null
+  updateAthleteProfileAsync(email, updates);
+  return null;
 }
 
 export async function updateProfileAsync(email: string, updates: Partial<Athlete>): Promise<Athlete | null> {
-  return updateAthleteProfileAsync(email, updates)
+  return updateAthleteProfileAsync(email, updates);
 }
 
 export async function completeOnboardingAsync(email: string, updates: Partial<Athlete>): Promise<Athlete | null> {
   return updateAthleteProfileAsync(email, {
     ...updates,
     onboarding_complete: true
-  })
+  });
 }
 
 export async function requestJoinTeamAsync(email: string, teamId: string): Promise<void> {
   await updateAthleteProfileAsync(email, {
     team_id: teamId,
     team_status: 'pendiente',
-  })
+  });
 }
 
 export function requestJoinTeam(email: string, teamId: string) {
-  requestJoinTeamAsync(email, teamId)
+  requestJoinTeamAsync(email, teamId);
 }
 
 export async function joinTeamAsync(email: string, teamId: string): Promise<void> {
-  await requestJoinTeamAsync(email, teamId)
+  await requestJoinTeamAsync(email, teamId);
 }
 
 export async function leaveTeamAsync(email: string): Promise<void> {
@@ -592,11 +408,11 @@ export async function leaveTeamAsync(email: string): Promise<void> {
     payment_receipt_url: undefined,
     payment_method: undefined,
     payment_motivo_rechazo: undefined,
-  })
+  });
 }
 
 export function leaveTeam(email: string) {
-  leaveTeamAsync(email)
+  leaveTeamAsync(email);
 }
 
 export async function uploadPaymentReceiptAsync(email: string, receiptName: string): Promise<void> {
@@ -604,11 +420,11 @@ export async function uploadPaymentReceiptAsync(email: string, receiptName: stri
     payment_status: 'Pendiente_Verificacion',
     payment_receipt_url: receiptName,
     payment_motivo_rechazo: undefined,
-  })
+  });
 }
 
 export function uploadPaymentReceipt(email: string, receiptName: string) {
-  uploadPaymentReceiptAsync(email, receiptName)
+  uploadPaymentReceiptAsync(email, receiptName);
 }
 
 export async function uploadMedicalCertificateAsync(email: string, certName: string): Promise<void> {
@@ -616,11 +432,11 @@ export async function uploadMedicalCertificateAsync(email: string, certName: str
     apto_medico_status: 'pendiente_verificacion',
     apto_medico_url: certName,
     apto_medico_motivo_rechazo: undefined,
-  })
+  });
 }
 
 export function uploadMedicalCertificate(email: string, certName: string) {
-  uploadMedicalCertificateAsync(email, certName)
+  uploadMedicalCertificateAsync(email, certName);
 }
 
 // =========== Admin Operations ===========
@@ -635,19 +451,19 @@ export async function updateAthleteTeamStatus(email: string, status: 'activo' | 
         payment_receipt_url: undefined,
         payment_method: undefined,
         payment_motivo_rechazo: undefined,
-      })
+      });
     } else if (status === 'activo') {
       await updateAthleteProfileAsync(email, {
         team_status: 'activo',
         payment_status: 'Pendiente_Pago',
-      })
+      });
     } else {
       await updateAthleteProfileAsync(email, {
         team_status: status,
-      })
+      });
     }
   } catch (err) {
-    console.error('Error in updateAthleteTeamStatus:', err)
+    console.error('Error in updateAthleteTeamStatus:', err);
   }
 }
 
@@ -661,7 +477,7 @@ export async function updateAthleteAptoStatus(
     apto_medico_status: status,
     apto_medico_vencimiento: vencimiento || undefined,
     apto_medico_motivo_rechazo: rejectReason || undefined,
-  })
+  });
 }
 
 export async function updateAthletePaymentStatus(
@@ -672,29 +488,29 @@ export async function updateAthletePaymentStatus(
   await updateAthleteProfileAsync(email, {
     payment_status: status,
     payment_motivo_rechazo: rejectReason || undefined,
-  })
+  });
 }
 
 export async function processRequestAsync(email: string, approve: boolean): Promise<void> {
   if (approve) {
-    await updateAthleteTeamStatus(email, 'activo')
+    await updateAthleteTeamStatus(email, 'activo');
   } else {
-    await updateAthleteTeamStatus(email, null)
+    await updateAthleteTeamStatus(email, null);
   }
 }
 
 export function processRequest(email: string, approve: boolean) {
-  processRequestAsync(email, approve)
+  processRequestAsync(email, approve);
 }
 
-// Idempotencia de pagos: comprobar si ya existe un registro de pago para este correo en el mes actual
-async function checkDuplicatePayment(supabase: any, email: string): Promise<boolean> {
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0, 0, 0, 0)
-  
-  const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59, 999)
-  
+async function checkDuplicatePayment(email: string): Promise<boolean> {
+  const supabase = createClient();
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+
   const { data, error } = await supabase
     .from('payments')
     .select('id')
@@ -702,24 +518,23 @@ async function checkDuplicatePayment(supabase: any, email: string): Promise<bool
     .gte('created_at', startOfMonth.toISOString())
     .lte('created_at', endOfMonth.toISOString())
     .limit(1)
-    .maybeSingle()
-  
+    .maybeSingle();
+
   if (error) {
-    console.error('Error checking duplicate payment:', error)
-    return false
+    console.error('Error checking duplicate payment:', error);
+    return false;
   }
-  return !!data
+  return !!data;
 }
 
 export async function addPaymentRecord(email: string, name: string, amount: number, method: string): Promise<void> {
   try {
-    const supabase = createClient()
-    
-    // Validar duplicado
-    const isDuplicate = await checkDuplicatePayment(supabase, email)
+    const supabase = createClient();
+
+    const isDuplicate = await checkDuplicatePayment(email);
     if (isDuplicate) {
-      console.warn(`Payment for ${email} this month already exists. Skipping insertion for idempotency.`)
-      return
+      console.warn(`Payment for ${email} this month already exists. Skipping insertion for idempotency.`);
+      return;
     }
 
     const { error } = await supabase.from('payments').insert({
@@ -728,149 +543,148 @@ export async function addPaymentRecord(email: string, name: string, amount: numb
       amount: amount,
       method: method,
       status: 'aprobado',
-    })
-    
-    if (error) throw error
+    });
+
+    if (error) throw error;
   } catch (err) {
-    console.error('Error in addPaymentRecord:', err)
+    console.error('Error in addPaymentRecord:', err);
   }
 }
 
 export async function processPaymentAsync(email: string, approve: boolean, method?: string, reason?: string): Promise<void> {
   try {
-    const supabase = createClient()
-    
+    const supabase = createClient();
+
     if (approve) {
       await updateAthleteProfileAsync(email, {
         payment_status: 'Pagado',
         payment_method: method || 'Transferencia',
         payment_motivo_rechazo: undefined,
-      })
-      
+      });
+
       const { data: athlete, error: athleteError } = await supabase
         .from('athletes')
         .select('name')
         .eq('email', email)
-        .maybeSingle()
-      
-      if (athleteError) throw athleteError
-      
+        .maybeSingle();
+
+      if (athleteError) throw athleteError;
+
       if (athlete) {
-        await addPaymentRecord(email, athlete.name, 17000, method || 'Transferencia')
+        await addPaymentRecord(email, athlete.name, 17000, method || 'Transferencia');
       }
     } else {
       await updateAthleteProfileAsync(email, {
         payment_status: 'Vencido',
         payment_motivo_rechazo: reason || 'Comprobante no valido',
-      })
+      });
     }
   } catch (err) {
-    console.error('Error in processPaymentAsync:', err)
+    console.error('Error in processPaymentAsync:', err);
   }
 }
 
 export function processPayment(email: string, approve: boolean, method?: string, reason?: string) {
-  processPaymentAsync(email, approve, method, reason)
+  processPaymentAsync(email, approve, method, reason);
 }
 
 export async function processCertificateAsync(email: string, approve: boolean, months?: number, reason?: string): Promise<void> {
   try {
     if (approve) {
-      const monthsValidity = months || 6
-      const expirationDate = addMonthsWithClamp(new Date(), monthsValidity)
+      const monthsValidity = months || 6;
+      const expirationDate = addMonthsWithClamp(new Date(), monthsValidity);
 
       await updateAthleteProfileAsync(email, {
         apto_medico_status: 'vigente',
         apto_medico_vencimiento: expirationDate.toISOString(),
         apto_medico_motivo_rechazo: undefined,
-      })
+      });
     } else {
       await updateAthleteProfileAsync(email, {
         apto_medico_status: 'rechazado',
         apto_medico_motivo_rechazo: reason || 'Certificado medico borroso o no legible',
-      })
+      });
     }
   } catch (err) {
-    console.error('Error in processCertificateAsync:', err)
+    console.error('Error in processCertificateAsync:', err);
   }
 }
 
 export function processCertificate(email: string, approve: boolean, months?: number, reason?: string) {
-  processCertificateAsync(email, approve, months, reason)
+  processCertificateAsync(email, approve, months, reason);
 }
 
 export async function expelAthleteAsync(email: string): Promise<void> {
-  await leaveTeamAsync(email)
+  await leaveTeamAsync(email);
 }
 
 export function expelAthlete(email: string) {
-  expelAthleteAsync(email)
+  expelAthleteAsync(email);
 }
 
 // =========== Payments Operations ===========
 
 export async function getPaymentsAsync(): Promise<Payment[]> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('payments')
       .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data ? data.map(fromDbPayment) : []
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data ? data.map(fromDbPayment) : [];
   } catch (err) {
-    console.error('Error in getPaymentsAsync:', err)
-    return []
+    console.error('Error in getPaymentsAsync:', err);
+    return [];
   }
 }
 
 export async function getPaymentHistory(): Promise<Payment[]> {
-  return getPaymentsAsync()
+  return getPaymentsAsync();
 }
 
 export function getPayments(): Payment[] {
-  return []
+  return [];
 }
 
 // =========== Analytics ===========
 
 export async function getAnalyticsDataAsync() {
   try {
-    // 2.7 Optimización con Promise.all
     const [payments, athletes] = await Promise.all([
       getPaymentsAsync(),
       getAthletesAsync()
-    ])
-    
-    const teamAthletes = athletes.filter(a => a.team_id && a.team_status === 'activo')
+    ]);
 
-    const monthlyData: { [key: string]: { revenue: number; paymentCount: number; month: string; monthLabel: string } } = {}
+    const teamAthletes = athletes.filter(a => a.team_id && a.team_status === 'activo');
+
+    const monthlyData: { [key: string]: { revenue: number; paymentCount: number; month: string; monthLabel: string } } = {};
 
     payments.forEach(p => {
-      if (p.status !== 'aprobado') return
-      const d = new Date(p.created_at)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+      if (p.status !== 'aprobado') return;
+      const d = new Date(p.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
       if (!monthlyData[key]) {
         monthlyData[key] = {
           revenue: 0,
           paymentCount: 0,
           month: key,
           monthLabel: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
-        }
+        };
       }
-      monthlyData[key].revenue += p.amount
-      monthlyData[key].paymentCount += 1
-    })
+      monthlyData[key].revenue += p.amount;
+      monthlyData[key].paymentCount += 1;
+    });
 
-    const sortedMonths = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month))
+    const sortedMonths = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
 
-    const totalRevenue = payments.filter(p => p.status === 'aprobado').reduce((sum, p) => sum + p.amount, 0)
-    const totalActiveAthletes = teamAthletes.length
-    const paidAthletes = teamAthletes.filter(a => a.payment_status === 'Pagado').length
-    const unpaidAthletes = teamAthletes.filter(a => a.payment_status !== 'Pagado').length
-    const morosityRate = totalActiveAthletes > 0 ? Math.round((unpaidAthletes / totalActiveAthletes) * 100) : 0
+    const totalRevenue = payments.filter(p => p.status === 'aprobado').reduce((sum, p) => sum + p.amount, 0);
+    const totalActiveAthletes = teamAthletes.length;
+    const paidAthletes = teamAthletes.filter(a => a.payment_status === 'Pagado').length;
+    const unpaidAthletes = teamAthletes.filter(a => a.payment_status !== 'Pagado').length;
+    const morosityRate = totalActiveAthletes > 0 ? Math.round((unpaidAthletes / totalActiveAthletes) * 100) : 0;
 
     return {
       monthlyData: sortedMonths,
@@ -880,9 +694,9 @@ export async function getAnalyticsDataAsync() {
       unpaidAthletes,
       morosityRate,
       averagePerAthlete: totalActiveAthletes > 0 ? Math.round(totalRevenue / totalActiveAthletes) : 0,
-    }
+    };
   } catch (err) {
-    console.error('Error in getAnalyticsDataAsync:', err)
+    console.error('Error in getAnalyticsDataAsync:', err);
     return {
       monthlyData: [],
       totalRevenue: 0,
@@ -891,6 +705,6 @@ export async function getAnalyticsDataAsync() {
       unpaidAthletes: 0,
       morosityRate: 0,
       averagePerAthlete: 0,
-    }
+    };
   }
 }

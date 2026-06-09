@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { getCurrentUserAsync, setCurrentUserEmail, Athlete } from '@/lib/db';
+import { authClient } from '@/lib/auth-client';
 import { Archivo } from 'next/font/google';
 
 const archivoFont = Archivo({
@@ -17,66 +16,32 @@ export default function Login() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isBgLoaded, setIsBgLoaded] = useState(false);
 
+  const { data: session, isPending } = authClient.useSession();
+
   useEffect(() => {
-    checkSession();
+    if (!isPending) {
+      setIsCheckingSession(false);
+      if (session?.user) {
+        router.push('/dashboard');
+      }
+    }
+  }, [session, isPending, router]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsBgLoaded(true);
     }, 50);
     return () => clearTimeout(timer);
   }, []);
 
-  const checkSession = async () => {
-    try {
-      const user = await getCurrentUserAsync();
-      if (user) {
-        redirectUser(user);
-      }
-    } catch (error) {
-      console.error('Error checking session:', error);
-    } finally {
-      setIsCheckingSession(false);
-    }
-  };
-
-  const redirectUser = (user: Athlete) => {
-    if (!user.onboarding_complete) {
-      router.push('/onboarding');
-    } else if (user.role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/dashboard');
-    }
-  };
-
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-      if (isMock) {
-        console.log('Detectado entorno local sin credenciales. Usando fallback de demo...');
-        setCurrentUserEmail('atleta@demo.com');
-        const mockUser = {
-          email: 'atleta@demo.com',
-          name: 'Atleta de Prueba',
-          role: 'atleta' as const,
-          onboarding_complete: true
-        };
-        redirectUser(mockUser);
-        return;
-      }
-
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      await authClient.signIn.social({
         provider: 'google',
-        options: {
-          redirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback`,
-        },
+        callbackURL: '/dashboard',
+        errorCallbackURL: '/auth/error',
       });
-      if (error) {
-        console.error('Error signing in:', error);
-        setIsLoading(false);
-      }
     } catch (error) {
       console.error('Error signing in:', error);
       setIsLoading(false);
@@ -93,14 +58,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-end md:items-center justify-start bg-slate-950 text-white font-sans antialiased relative overflow-hidden px-6 py-12 md:p-20">
-      {/* Background images with Ken Burns / slow pan effect */}
       <div className={`absolute inset-0 bg-cover bg-center bg-no-repeat bg-[url('/fondo_mobile.webp')] md:bg-[url('/fondo_web.webp')] transition-opacity duration-1000 ease-out animate-slow-pan ${isBgLoaded ? 'opacity-100' : 'opacity-0'}`}></div>
       
-      {/* Dark gradient overlay to guarantee text contrast */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/20 md:bg-black/40"></div>
 
       <div className="w-full max-w-md z-10 space-y-8 md:space-y-10">
-        {/* Header Texts */}
         <div className="space-y-4 text-left">
           <h1 className={`${archivoFont.className} text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.1]`}>
             Superá<br />tus límites.
@@ -110,7 +72,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Google Login Button */}
         <div>
           <button
             onClick={handleGoogleLogin}

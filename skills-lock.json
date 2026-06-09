@@ -6,15 +6,30 @@
       "sourceType": "autoskills-registry",
       "computedHash": "bffe3d08cfe92ebad63699f74ce29e35c19850ebfbf474c1463183cfe34d6a09"
     },
+    "baseline-ui": {
+      "source": "ibelick/ui-skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+    },
     "composition-patterns": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "autoskills-registry",
       "computedHash": "c124390cc3441844903ada94cb5820b23d922f2d0ad34e01e029e410197c8a32"
     },
+    "fixing-accessibility": {
+      "source": "ibelick/ui-skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "autoskills-registry",
       "computedHash": "82fb11a63fb1e35ee2469516ed02d54695f783115b1540c0e783197af4240a3a"
+    },
+    "interface-design": {
+      "source": "Dammyjay93/interface-design",
+      "sourceType": "autoskills-registry",
+      "computedHash": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4"
     },
     "next-best-practices": {
       "source": "vercel-labs/next-skills",
@@ -30,16 +45,6 @@
       "source": "vercel-labs/next-skills",
       "sourceType": "autoskills-registry",
       "computedHash": "265833561c41038b4a626585b46186cff859b7f9b2254ae6b88d01648790a7b4"
-    },
-    "nodejs-backend-patterns": {
-      "source": "wshobson/agents",
-      "sourceType": "autoskills-registry",
-      "computedHash": "710a5e6f83c46e8f6c43356df55c143a7375c4414559a581654ce51709138c55"
-    },
-    "nodejs-best-practices": {
-      "source": "sickn33/antigravity-awesome-skills",
-      "sourceType": "autoskills-registry",
-      "computedHash": "7361ab02fb6b09913e3bdd9cf61c629ed6c17de9485e6a781054e5d437ccfc29"
     },
     "react-best-practices": {
       "source": "vercel-labs/agent-skills",

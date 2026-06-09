@@ -7,14 +7,20 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
 
+const getBaseURL = () => {
+  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL.trim();
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.trim()}`;
+  return "http://localhost:3000";
+};
+
 export const auth = betterAuth({
   database: pool,
-  baseURL: "https://rv-mvp.vercel.app",
-  secret: process.env.BETTER_AUTH_SECRET!,
+  baseURL: getBaseURL(),
+  secret: (process.env.BETTER_AUTH_SECRET ?? "").trim(),
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: (process.env.GOOGLE_CLIENT_ID ?? "").trim(),
+      clientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? "").trim(),
     },
   },
   user: {

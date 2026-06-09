@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUserAsync, getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
+import { getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Navbar from '@/components/Navbar';
-import { MapPin, Users, Calendar, ArrowRight, ChevronLeft, Clock, Footprints, Activity, Dumbbell, Mountain, Compass } from 'lucide-react';
+import { MapPin, Users, ArrowRight, ChevronLeft, Clock, Footprints, Activity, Dumbbell, Mountain, Compass } from 'lucide-react';
 import { Archivo } from 'next/font/google';
 
 const archivoFont = Archivo({
@@ -14,11 +15,12 @@ const archivoFont = Archivo({
 
 export default function EquiposPage() {
   const router = useRouter();
-  const [user, setUser] = useState<Athlete | null>(null);
+  const { user, isLoading } = useAuthGuard();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [dataLoading, setDataLoading] = useState(true);
+  const [searchTerm] = useState('');
   const [activeTeamDetails, setActiveTeamDetails] = useState<Team | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [allAthletes, setAllAthletes] = useState<Athlete[]>([]);
 
   // Computaciones para el modal "Ver equipo"
@@ -26,38 +28,51 @@ export default function EquiposPage() {
     ? allAthletes.find(a => a.team_id === activeTeamDetails.id && a.role === 'admin')
     : null;
 
-  const coachName = activeTeamAdmin ? activeTeamAdmin.name : (activeTeamDetails?.coach || '');
-  const coachPhone = activeTeamAdmin?.phone?.replace(/[^0-9]/g, '') || '';
+  const coachName = activeTeamAdmin ? activeTeamAdmin.name : (activeTeamDetails?.coach || 'Raúl');
+  const coachPhone = activeTeamAdmin?.phone?.replace(/[^0-9]/g, '') || '5493804592633';
   
-  const whatsappLink = coachPhone
-    ? `https://wa.me/${coachPhone}?text=Hola%20${encodeURIComponent(coachName)},%20quiero%20saber%20más%20sobre%20el%20equipo%20${encodeURIComponent(activeTeamDetails?.name || '')}`
-    : (activeTeamDetails?.whatsapp_url || 'https://wa.me/5493804000000');
+  const whatsappLink = `https://wa.me/${coachPhone}?text=${encodeURIComponent('Hola Raúl, te escribo para hacerte una consulta acerca de los entrenamientos de RV...')}`;
 
   const athleteCount = activeTeamDetails
     ? allAthletes.filter(a => a.team_id === activeTeamDetails.id && a.team_status === 'activo').length
     : 0;
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const getExperienceYears = (foundedDateStr?: string) => {
+    if (!foundedDateStr) return 10;
+    const founded = new Date(foundedDateStr);
+    if (isNaN(founded.getTime())) return 10;
+    const today = new Date();
+    let years = today.getFullYear() - founded.getFullYear();
+    const m = today.getMonth() - founded.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < founded.getDate())) {
+      years--;
+    }
+    return Math.max(0, years);
+  };
 
   const loadData = async () => {
-    const currentUser = await getCurrentUserAsync();
-    if (!currentUser) {
-      router.push('/');
-      return;
-    }
-    if (!currentUser.onboarding_complete) {
-      router.push('/onboarding');
-      return;
-    }
-    setUser(currentUser);
+    if (!user) return;
     const allTeams = await getTeamsAsync();
     setTeams(allTeams);
     const athletesList = await getAllAthletes();
     setAllAthletes(athletesList);
-    setIsLoading(false);
+    setDataLoading(false);
   };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => {
+      setActiveTeamDetails(null);
+    }, 200);
+  };
+
+  useEffect(() => {
+    if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleJoinTeam = async (teamId: string) => {
     if (!user) return;
@@ -71,12 +86,14 @@ export default function EquiposPage() {
     loadData();
   };
 
-  const filteredTeams = teams.filter(team => 
-    team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    team.location?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTeams = useMemo(() => 
+    teams.filter(team => 
+      team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      team.location?.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+  [teams, searchTerm]);
 
-  if (isLoading) {
+  if (isLoading || dataLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
         <div className="animate-pulse text-slate-600 font-medium">Cargando...</div>
@@ -87,16 +104,25 @@ export default function EquiposPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* HEADER */}
-        <div className="mb-8">
-          <h1 className={`${archivoFont.className} text-4xl font-black tracking-tight text-slate-900 mb-2`}>
-            Explorar Equipos
-          </h1>
-          <p className="text-slate-600">Encuentra tu equipo de run ideal y solicita tu ingreso.</p>
+        <div className="relative mb-12 text-left">
+          {/* Decorative blur blobs */}
+          <div className="absolute -left-10 -top-10 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute left-40 -top-20 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="space-y-4">
+            <h1 className={`${archivoFont.className} text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-slate-900 leading-none`}>
+              Equipos
+            </h1>
+            <p className="text-slate-500 text-sm sm:text-base font-medium max-w-xl">
+              Busca tu equipo para entrenar.
+            </p>
+          </div>
+          <div className="h-[2px] w-20 bg-gradient-to-r from-[#1e4e6d] to-transparent mt-6 rounded-full" />
         </div>
 
 
@@ -110,102 +136,73 @@ export default function EquiposPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTeams.map((team) => {
               const isUserTeam = user.team_id === team.id;
-              const isPending = isUserTeam && user.team_status === 'pendiente';
               const isActive = isUserTeam && user.team_status === 'activo';
 
-              // Obtener información dinámica del coach y atleta
               const teamAdmin = allAthletes.find(a => a.team_id === team.id && a.role === 'admin');
               const coachName = teamAdmin ? teamAdmin.name : team.coach;
-              const athleteCount = allAthletes.filter(a => a.team_id === team.id && a.team_status === 'activo').length;
 
               return (
                 <div
                   key={team.id}
-                  className="bg-[#e2edf6] border border-white/50 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative"
+                  onClick={() => {
+                    if (isActive) {
+                      router.push('/dashboard');
+                    }
+                  }}
+                  className={`bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative ${
+                    isActive ? 'cursor-pointer hover:border-emerald-300' : ''
+                  }`}
                 >
-                  {/* Top Cover Image */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-300">
+                  {/* Top Cover Image (Centered Logo on Black Background) */}
+                  <div className="relative h-56 w-full overflow-hidden bg-black flex items-center justify-center p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
-                      src={coachName === 'Raúl Vergara' || coachName === 'Raul Vergara' ? '/coach-raul.png' : team.logo_url || '/rv-logo.svg'} 
-                      alt={coachName} 
-                      className="w-full h-full object-cover object-top"
+                      src={team.logo_url || '/rv-logo.png'} 
+                      alt={team.name} 
+                      className="w-full h-full object-contain"
                     />
-                    
-                    {/* Dark overlay at bottom for text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#e2edf6] via-slate-900/10 to-slate-900/35" />
-
-                    {/* Location Badge Overlay */}
-                    {team.location && (
-                      <div className="bg-slate-900/50 backdrop-blur-md text-white text-[9px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 w-fit absolute top-3 left-3 border border-white/10">
-                        <MapPin className="w-3 h-3 text-white" />
-                        <span>{team.location}</span>
-                      </div>
+                    {isActive && (
+                      <span className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full shadow-md z-10">
+                        Tu equipo
+                      </span>
                     )}
-
-                    {/* Title overlay at bottom left */}
-                    <div className="absolute bottom-3 left-4 right-4 text-left">
-                      <h3 className={`${archivoFont.className} text-xl font-black text-slate-900 leading-none uppercase truncate`}>
-                        {coachName}
-                      </h3>
-                      <p className="text-[10px] text-slate-600 font-bold truncate mt-0.5">
-                        {team.name}
-                      </p>
-                    </div>
                   </div>
 
-                  {/* Card Body */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    {/* Stats Card inside */}
-                    <div className="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/20 space-y-2 text-left">
-                      <div className="flex items-center gap-2 text-[11px] text-slate-600">
-                        <Users className="w-3.5 h-3.5 text-[#1e4e6d]" />
-                        <span>Atletas Activos: <strong className="text-slate-800">{athleteCount}</strong></span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-600">
-                        <Calendar className="w-3.5 h-3.5 text-[#1e4e6d]" />
-                        <span className="truncate">Días: <strong className="text-slate-800">{team.training_days}</strong></span>
-                      </div>
-                    </div>
-
-                    {/* Specialties / Sports badges */}
-                    <div className="flex flex-wrap gap-1">
-                      {[
-                        { name: 'Trail', icon: Mountain },
-                        { name: 'Ruta', icon: Compass },
-                        { name: 'Fuerza', icon: Dumbbell }
-                      ].map((sport) => {
-                        const SportIcon = sport.icon;
-                        return (
-                          <span 
-                            key={sport.name} 
-                            className="bg-white/60 text-slate-700 px-2 py-0.5 rounded-full text-[9px] font-bold border border-slate-200/30 flex items-center gap-1"
-                          >
-                            <SportIcon className="w-2.5 h-2.5 text-[#1e4e6d]" />
-                            {sport.name}
+                  {/* Card Body - Content Section below logo */}
+                  <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
+                    <div className="text-left space-y-2">
+                      <h3 className={`${archivoFont.className} text-xl font-black text-slate-900 leading-tight uppercase`}>
+                        {team.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-semibold">
+                        <span className="text-[#1e4e6d] font-bold">
+                          De {coachName}
+                        </span>
+                        {team.location && (
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            {team.location}
                           </span>
-                        );
-                      })}
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Card Footer */}
-                  <div className="px-4 pb-5 space-y-2">
-                    <div className="grid grid-cols-2 gap-3">
-                      {isActive ? (
-                        <button
-                          onClick={() => router.push('/dashboard')}
-                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-semibold text-center flex items-center justify-center shadow-sm cursor-pointer transition-colors duration-150"
-                        >
-                          Miembro
-                        </button>
-                      ) : isPending ? (
-                        <button
-                          onClick={handleCancelRequest}
-                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-semibold text-center transition-all duration-150 cursor-pointer shadow-sm animate-pulse"
-                        >
-                          Cancelar
-                        </button>
-                      ) : (
+                  <div className="px-5 pb-5">
+                    {isUserTeam ? (
+                      <div className="w-full">
+                        {!isActive && (
+                          <button
+                            onClick={handleCancelRequest}
+                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-semibold text-center transition-all duration-150 cursor-pointer shadow-sm"
+                          >
+                            Cancelar Solicitud
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
                         <button
                           onClick={() => handleJoinTeam(team.id)}
                           className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1"
@@ -213,16 +210,17 @@ export default function EquiposPage() {
                           Unirse
                           <ArrowRight className="w-3 h-3" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setActiveTeamDetails(team);
-                        }}
-                        className="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer text-center shadow-sm"
-                      >
-                        Ver equipo
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => {
+                            setActiveTeamDetails(team);
+                            setIsModalOpen(true);
+                          }}
+                          className="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer text-center shadow-sm"
+                        >
+                          Ver equipo
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -234,51 +232,50 @@ export default function EquiposPage() {
       {/* Ventana Emergente (Modal) "Ver equipo" al estilo de la referencia */}
       {activeTeamDetails && (
         <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300"
-          onClick={() => setActiveTeamDetails(null)}
+          className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${
+            isModalOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={handleCloseModal}
         >
           <div 
-            className="bg-[#e2edf6] text-slate-800 rounded-[32px] overflow-hidden shadow-2xl max-w-sm w-full border border-white/45 flex flex-col relative animate-modal-zoom-in"
+            className={`bg-[#e2edf6] text-slate-800 rounded-[32px] overflow-hidden shadow-2xl max-w-sm w-full border border-white/45 flex flex-col relative ${
+              isModalOpen ? 'animate-modal-zoom-in' : 'animate-modal-zoom-out'
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Profile Card Header with Background Image */}
-            <div className="relative h-80 w-full overflow-hidden bg-slate-300">
+            <div className="relative h-64 w-full overflow-hidden bg-black flex items-center justify-center p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
-                src={coachName === 'Raúl Vergara' || coachName === 'Raul Vergara' ? '/coach-raul.png' : activeTeamDetails.logo_url || '/rv-logo.svg'} 
-                alt={coachName} 
-                className="w-full h-full object-cover object-top"
+                src={activeTeamDetails.logo_url || '/rv-logo.png'} 
+                alt={activeTeamDetails.name} 
+                className="w-full h-full object-contain"
               />
               
-              {/* Dark overlay at bottom for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#e2edf6] via-slate-900/10 to-slate-900/30" />
-
               {/* Circular Action Buttons at top */}
               <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
                 <button 
-                  onClick={() => setActiveTeamDetails(null)}
-                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md hover:bg-white text-slate-700 flex items-center justify-center shadow-md transition-all cursor-pointer border border-white/20"
+                  onClick={handleCloseModal}
+                  className="w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center shadow-md transition-all cursor-pointer border border-white/20"
                 >
                   <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
                 </button>
               </div>
-
-              {/* Overlaid Info on the bottom left of the photo */}
-              <div className="absolute bottom-5 left-6 right-6 text-left">
-                <h2 className={`${archivoFont.className} text-3xl font-black text-slate-900 mt-2 tracking-tight leading-tight uppercase`}>
-                  {coachName}
-                </h2>
-                
-                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mt-0.5">
-                  Director Técnico y Coach
-                </p>
-                <p className="text-[11px] text-slate-600 font-medium">
-                  {activeTeamDetails.name}
-                </p>
-              </div>
             </div>
 
             {/* Middle Controls (WhatsApp Button Full-Width) */}
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-5 space-y-5">
+              {/* Team Identity below logo */}
+              <div className="text-left space-y-1.5">
+                <h2 className={`${archivoFont.className} text-2xl font-black text-slate-900 uppercase tracking-tight`}>
+                  {activeTeamDetails.name}
+                </h2>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <span className="text-[#1e4e6d] font-bold">De {coachName}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-400 font-medium">Director Técnico y Coach</span>
+                </div>
+              </div>
               <div className="flex items-center justify-center">
                 {/* WhatsApp Button */}
                 <a 
@@ -301,7 +298,7 @@ export default function EquiposPage() {
                   <div className="flex justify-center text-[#1e4e6d] mb-1">
                     <Clock className="w-4.5 h-4.5" />
                   </div>
-                  <p className="text-sm font-bold text-slate-800">10 Años</p>
+                  <p className="text-sm font-bold text-slate-800">{getExperienceYears(activeTeamDetails.founded_date)} Años</p>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5">Experiencia</p>
                 </div>
                 <div className="h-8 w-[1px] bg-slate-100" />
@@ -321,20 +318,32 @@ export default function EquiposPage() {
                   Especialidades del Equipo
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { name: 'Trail Running', icon: Footprints },
-                    { name: 'Ultra Trail', icon: Mountain },
-                    { name: 'Ruta / Calle', icon: Compass },
-                    { name: 'Funcional', icon: Dumbbell }
-                  ].map((sport) => {
-                    const SportIcon = sport.icon;
+                  {((activeTeamDetails.specialties || 'Trail Running,Ultra Trail,Ruta / Calle,Funcional')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                  ).map((sportName) => {
+                    const getIcon = (name: string) => {
+                      switch (name.toLowerCase()) {
+                        case 'trail running': return Footprints;
+                        case 'ultra trail': return Mountain;
+                        case 'ruta / calle': return Compass;
+                        case 'funcional': return Dumbbell;
+                        case 'trekking': return Mountain;
+                        case 'aventura': return Compass;
+                        case 'crossfit': return Dumbbell;
+                        case 'ciclismo': return Activity;
+                        default: return Activity;
+                      }
+                    };
+                    const SportIcon = getIcon(sportName);
                     return (
                       <div 
-                        key={sport.name} 
+                        key={sportName} 
                         className="bg-white hover:bg-slate-50 text-slate-800 px-3 py-2 rounded-xl text-[11px] font-bold shadow-sm border border-slate-200/40 flex items-center gap-2 transition-all"
                       >
                         <SportIcon className="w-4.5 h-4.5 text-[#1e4e6d] flex-shrink-0" />
-                        <span>{sport.name}</span>
+                        <span>{sportName}</span>
                       </div>
                     );
                   })}

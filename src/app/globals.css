@@ -36,6 +36,16 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Custom slate tones used across pages */
+  --color-slate-150: oklch(0.94 0.005 240);
+  --color-slate-650: oklch(0.55 0.02 240);
+  --color-slate-850: oklch(0.28 0.02 240);
+  --color-blue-150: oklch(0.93 0.02 240);
+  --color-blue-850: oklch(0.30 0.15 250);
+  --color-red-150: oklch(0.93 0.02 25);
+  --color-red-650: oklch(0.50 0.22 25);
+  --color-red-655: oklch(0.48 0.22 25);
+  --color-amber-650: oklch(0.60 0.18 70);
 }
 
 :root {
@@ -153,5 +163,20 @@
 
 .animate-modal-zoom-in {
   animation: modal-zoom-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes modal-zoom-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+}
+
+.animate-modal-zoom-out {
+  animation: modal-zoom-out 0.2s ease-in forwards;
 }
 
