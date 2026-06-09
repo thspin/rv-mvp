@@ -39,7 +39,7 @@ const archivoFont = Archivo({
 
 export default function AthleteDashboard() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuthGuard();
+  const { user, isLoading: authLoading, authError } = useAuthGuard();
   const [team, setTeam] = useState<Team | null>(null);
   const parsedShifts = team ? parseTrainingDays(team.training_days) : null;
   const parsedInstructions = team ? parseInstructions(team.instructions) : null;
@@ -161,6 +161,22 @@ export default function AthleteDashboard() {
       setUploadingCert(false);
     }
   };
+
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center space-y-4 p-8">
+          <p className="text-slate-700 font-medium">{authError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-slate-900 text-white rounded-full font-bold text-xs uppercase tracking-wider cursor-pointer"
+          >
+            Recargar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading || dataLoading) {
     return <LoadingScreen />;
