@@ -28,6 +28,7 @@ export default function EquiposPage() {
   const [pendingTeamId, setPendingTeamId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingAlertTeam, setPendingAlertTeam] = useState<Team | null>(null);
 
   // Computaciones para el modal "Ver equipo"
   const activeTeamAdmin = activeTeamDetails
@@ -186,12 +187,18 @@ export default function EquiposPage() {
                 <div
                   key={team.id}
                   onClick={(e) => {
-                    if (isActive && (e.target as HTMLElement).closest('button') === null) {
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    if (isActive) {
                       router.push('/dashboard');
+                    } else if (isUserTeam) {
+                      setPendingAlertTeam(team);
+                    } else {
+                      setActiveTeamDetails(team);
+                      setIsModalOpen(true);
                     }
                   }}
-                  className={`bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative ${
-                    isActive ? 'cursor-pointer hover:border-emerald-300' : ''
+                  className={`bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative cursor-pointer ${
+                    isActive ? 'hover:border-emerald-300' : isUserTeam ? 'hover:border-amber-300' : 'hover:border-blue-300'
                   }`}
                 >
                   {/* Top Cover Image (Centered Logo on Black Background) */}
@@ -412,6 +419,32 @@ export default function EquiposPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {pendingAlertTeam && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] p-8 max-w-sm w-full shadow-xl space-y-5 relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 to-transparent rounded-bl-full pointer-events-none" />
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight`}>Solicitud en revisión</h3>
+                <p className="text-sm text-slate-500 font-medium">{pendingAlertTeam.name}</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed relative z-10">
+              Tu solicitud de ingreso a <strong>{pendingAlertTeam.name}</strong> aún está siendo evaluada por el administrador del equipo. Recibirás una notificación cuando sea aprobada.
+            </p>
+            <button
+              onClick={() => setPendingAlertTeam(null)}
+              className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-full transition-all duration-150 cursor-pointer uppercase tracking-wider relative z-10"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
