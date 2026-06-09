@@ -58,6 +58,27 @@ function formReducer(state: FormState, action: FormAction): FormState {
   }
 }
 
+const formatDbToInputDate = (dbDate?: string): string => {
+  if (!dbDate) return '';
+  if (dbDate.includes('/')) return dbDate;
+  const parts = dbDate.split('-');
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd.padStart(2, '0')}/${mm.padStart(2, '0')}/${yyyy}`;
+  }
+  return dbDate;
+};
+
+const formatInputToDbDate = (inputDate: string): string => {
+  if (!inputDate) return '';
+  const parts = inputDate.split('/');
+  if (parts.length === 3) {
+    const [dd, mm, yyyy] = parts;
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+  return inputDate;
+};
+
 export default function PerfilPage() {
   const { user, isLoading: authLoading, setUser } = useAuthGuard(false);
   const { uploadFile, uploading, error: uploadError } = useFileUpload();
@@ -79,6 +100,22 @@ export default function PerfilPage() {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...current, [field]: value }));
       } catch { /* ignorar errores de localStorage */ }
     }
+  };
+
+  const handleFechaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remover todo lo que no sea número
+    if (value.length > 8) {
+      value = value.slice(0, 8);
+    }
+    
+    let formatted = value;
+    if (value.length > 4) {
+      formatted = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
+    } else if (value.length > 2) {
+      formatted = `${value.slice(0, 2)}/${value.slice(2)}`;
+    }
+    
+    setField('fechaNacimiento', formatted);
   };
 
   // Messages and Upload Statuses
@@ -105,7 +142,7 @@ export default function PerfilPage() {
           dispatch({ type: 'LOAD_USER', payload: {
             name: parsed.name ?? user.name ?? '',
             genero: parsed.genero ?? user.genero ?? '',
-            fechaNacimiento: parsed.fechaNacimiento ?? user.fecha_nacimiento ?? '',
+            fechaNacimiento: parsed.fechaNacimiento ?? (user.fecha_nacimiento ? formatDbToInputDate(user.fecha_nacimiento) : ''),
             tipoDocumento: parsed.tipoDocumento ?? user.tipo_documento ?? 'DNI',
             dni: parsed.dni ?? user.dni ?? '',
             phone: parsed.phone ?? user.phone ?? '',
@@ -130,7 +167,7 @@ export default function PerfilPage() {
     dispatch({ type: 'LOAD_USER', payload: {
       name: user.name || '',
       genero: user.genero || '',
-      fechaNacimiento: user.fecha_nacimiento || '',
+      fechaNacimiento: user.fecha_nacimiento ? formatDbToInputDate(user.fecha_nacimiento) : '',
       tipoDocumento: user.tipo_documento || 'DNI',
       dni: user.dni || '',
       phone: user.phone || '',
@@ -172,13 +209,37 @@ export default function PerfilPage() {
       setMessage({ type: 'error', text: 'Por favor completa todos los campos de datos personales, residencia y emergencia.' });
       return;
     }
+
+    // Validar formato de fecha de nacimiento (DD/MM/AAAA)
+    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!dateRegex.test(form.fechaNacimiento)) {
+      setMessage({ type: 'error', text: 'Por favor ingresa una fecha de nacimiento válida en formato DD/MM/AAAA.' });
+      return;
+    }
+
+    const parts = form.fechaNacimiento.split('/');
+    const dd = parseInt(parts[0], 10);
+    const mm = parseInt(parts[1], 10);
+    const yyyy = parseInt(parts[2], 10);
+    const date = new Date(yyyy, mm - 1, dd);
+    const today = new Date();
+    if (
+      date.getFullYear() !== yyyy ||
+      date.getMonth() !== mm - 1 ||
+      date.getDate() !== dd ||
+      yyyy < 1900 ||
+      yyyy > today.getFullYear()
+    ) {
+      setMessage({ type: 'error', text: 'La fecha de nacimiento no es una fecha válida.' });
+      return;
+    }
     
     setIsSaving(true);
     try {
       const profileUpdates = {
         name: form.name.trim(),
         genero: form.genero,
-        fecha_nacimiento: form.fechaNacimiento,
+        fecha_nacimiento: formatInputToDbDate(form.fechaNacimiento),
         tipo_documento: form.tipoDocumento,
         dni: form.dni.trim(),
         phone: form.phone.trim(),
@@ -593,10 +654,11 @@ export default function PerfilPage() {
                       <div className="space-y-1.5 text-left">
                         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha de Nacimiento</label>
                         <input
-                          type="date"
+                          type="text"
+                          placeholder="DD/MM/AAAA"
                           value={form.fechaNacimiento}
-                          onChange={(e) => setField('fechaNacimiento', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
+                          onChange={handleFechaChange}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
                         />
                       </div>
 
@@ -714,7 +776,7 @@ export default function PerfilPage() {
                         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Teléfono de Emergencia</label>
                         <input
                           type="tel"
-                          placeholder="Telefono de emergencia"
+                          placeholder="Ej: +54 9 11 1234-5678"
                           value={form.emergencyPhone}
                           onChange={(e) => setField('emergencyPhone', e.target.value)}
                           className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-[#1e4e6d] focus:ring-2 focus:ring-[#1e4e6d]/10 outline-none transition-all duration-150"
@@ -749,28 +811,32 @@ export default function PerfilPage() {
               </div>
 
               {/* UPLOAD DOCUMENTATION BLOCK (ONLY IN EDIT MODE) */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-10 shadow-sm text-left space-y-6">
-                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-10 shadow-sm text-center space-y-6">
+                <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center justify-center gap-2`}>
                   <FileText className="w-5 h-5 text-rose-500" />
                   Actualizar Documentación
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Photo DNI Upload */}
-                  <div className="space-y-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1">Foto de DNI / Documento</span>
-                      <p className="text-xs text-slate-500 mb-3">Sube una imagen/PDF claro del frente de tu documento.</p>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold">Estado actual:</span>
+                  <div className="space-y-4 p-6 bg-slate-50/60 border border-slate-200/80 rounded-2xl flex flex-col justify-between items-center text-center">
+                    <div className="flex flex-col items-center space-y-2">
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-700 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200/50">
+                        Foto de DNI / Documento
+                      </h4>
+                      <p className="text-xs text-slate-500 leading-relaxed max-w-[220px]">
+                        Sube una imagen o PDF claro del frente de tu documento.
+                      </p>
+                      <div className="flex flex-col items-center gap-1 pt-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Estado actual</span>
                         <StatusBadge status={user.documento_status} variant="document" className="px-3 py-1 text-[11px]" />
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                    <div className="space-y-2 w-full max-w-[220px] pt-2">
+                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-[#1e4e6d] hover:text-[#153850] rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
                         <Upload className="w-3.5 h-3.5" />
-                        {uploading ? 'Subiendo...' : 'Seleccionar Archivo (PDF/Imagen)'}
+                        {uploading ? 'Subiendo...' : 'Seleccionar Archivo'}
                         <input
                           type="file"
                           accept="image/*,application/pdf"
@@ -781,7 +847,7 @@ export default function PerfilPage() {
                       </label>
                       <label className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
                         <Camera className="w-3.5 h-3.5" />
-                        {uploading ? 'Tomando...' : 'Tomar Foto con Cámara'}
+                        {uploading ? 'Tomando...' : 'Tomar Foto'}
                         <input
                           type="file"
                           accept="image/*"
@@ -795,20 +861,24 @@ export default function PerfilPage() {
                   </div>
 
                   {/* Apto Medico Upload */}
-                  <div className="space-y-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1">Certificado de Apto Médico</span>
-                      <p className="text-xs text-slate-500 mb-3">Sube tu certificado médico firmado y vigente.</p>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold">Estado actual:</span>
+                  <div className="space-y-4 p-6 bg-slate-50/60 border border-slate-200/80 rounded-2xl flex flex-col justify-between items-center text-center">
+                    <div className="flex flex-col items-center space-y-2">
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-700 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200/50">
+                        Certificado de Apto Médico
+                      </h4>
+                      <p className="text-xs text-slate-500 leading-relaxed max-w-[220px]">
+                        Sube tu certificado médico firmado y vigente.
+                      </p>
+                      <div className="flex flex-col items-center gap-1 pt-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Estado actual</span>
                         <StatusBadge status={user.apto_medico_status} variant="document" className="px-3 py-1 text-[11px]" />
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                    <div className="space-y-2 w-full max-w-[220px] pt-2">
+                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-[#1e4e6d] hover:text-[#153850] rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
                         <Upload className="w-3.5 h-3.5" />
-                        {uploading ? 'Subiendo...' : 'Seleccionar Archivo (PDF/Imagen)'}
+                        {uploading ? 'Subiendo...' : 'Seleccionar Archivo'}
                         <input
                           type="file"
                           accept="image/*,application/pdf"
@@ -819,7 +889,7 @@ export default function PerfilPage() {
                       </label>
                       <label className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
                         <Camera className="w-3.5 h-3.5" />
-                        {uploading ? 'Tomando...' : 'Tomar Foto con Cámara'}
+                        {uploading ? 'Tomando...' : 'Tomar Foto'}
                         <input
                           type="file"
                           accept="image/*"
