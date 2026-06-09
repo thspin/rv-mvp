@@ -42,6 +42,15 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
     }
 
     if (userById) {
+      // Sync Google avatar if athlete doesn't have one yet
+      const googleImage = session.user.image
+      if (googleImage && !userById.avatar_url) {
+        await supabase
+          .from('athletes')
+          .update({ avatar_url: googleImage })
+          .eq('id', userById.id)
+        userById.avatar_url = googleImage
+      }
       return { success: true, data: fromDbAthlete(userById) }
     }
 
@@ -57,10 +66,14 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
     }
 
     if (userByEmail) {
-      // Link existing record to Better Auth user_id
+      // Link existing record to Better Auth user_id and sync avatar
+      const googleImage = session.user.image
+      const updates: Record<string, unknown> = { user_id: userId }
+      if (googleImage && !userByEmail.avatar_url) updates.avatar_url = googleImage
+
       const { data: updated, error: updateError } = await supabase
         .from('athletes')
-        .update({ user_id: userId })
+        .update(updates)
         .eq('id', userByEmail.id)
         .select()
         .single()
@@ -79,6 +92,7 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
       role: 'atleta',
       onboarding_complete: false,
       apto_medico_status: 'no_entregado',
+      avatar_url: session.user.image || null,
     }
 
     const { data: created, error: createError } = await supabase
