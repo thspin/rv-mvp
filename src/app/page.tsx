@@ -22,7 +22,7 @@ export default function Login() {
     if (!isPending) {
       setIsCheckingSession(false);
       if (session?.user) {
-        router.push('/dashboard');
+        router.push('/equipos');
       }
     }
   }, [session, isPending, router]);
@@ -39,7 +39,7 @@ export default function Login() {
     try {
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: '/dashboard',
+        callbackURL: '/equipos',
         errorCallbackURL: '/auth/error',
       });
     } catch (error) {
