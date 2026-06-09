@@ -66,7 +66,20 @@ export default function PerfilPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showOnboardingPopup, setShowOnboardingPopup] = useState(false);
   const [form, dispatch] = useReducer(formReducer, initialFormState);
-  const setField = (field: keyof FormState, value: string) => dispatch({ type: 'SET_FIELD', field, value });
+
+  const DRAFT_KEY = 'rv_onboarding_draft';
+
+  // Persiste cada campo en localStorage durante el onboarding
+  const setField = (field: keyof FormState, value: string) => {
+    dispatch({ type: 'SET_FIELD', field, value });
+    // Guardar draft solo si el onboarding no está completo
+    if (user && !user.onboarding_complete) {
+      try {
+        const current = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...current, [field]: value }));
+      } catch { /* ignorar errores de localStorage */ }
+    }
+  };
 
   // Messages and Upload Statuses
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -79,8 +92,41 @@ export default function PerfilPage() {
     return `/api/storage/avatars?filename=${avatarUrl}`;
   };
 
-  const loadUser = async () => {
+  const loadUser = (force = false) => {
     if (!user) return;
+
+    // Durante el onboarding, intentar restaurar draft de localStorage primero
+    if (!user.onboarding_complete) {
+      try {
+        const draft = localStorage.getItem(DRAFT_KEY);
+        if (draft && !force) {
+          // Hay un draft guardado — restaurarlo sin pisar lo que el usuario escribió
+          const parsed = JSON.parse(draft) as Partial<FormState>;
+          dispatch({ type: 'LOAD_USER', payload: {
+            name: parsed.name ?? user.name ?? '',
+            genero: parsed.genero ?? user.genero ?? '',
+            fechaNacimiento: parsed.fechaNacimiento ?? user.fecha_nacimiento ?? '',
+            tipoDocumento: parsed.tipoDocumento ?? user.tipo_documento ?? 'DNI',
+            dni: parsed.dni ?? user.dni ?? '',
+            phone: parsed.phone ?? user.phone ?? '',
+            shirtSize: parsed.shirtSize ?? user.talle_remera ?? '',
+            pais: parsed.pais ?? user.pais ?? '',
+            provincia: parsed.provincia ?? user.provincia ?? '',
+            ciudad: parsed.ciudad ?? user.ciudad ?? '',
+            codigoPostal: parsed.codigoPostal ?? user.codigo_postal ?? '',
+            domicilio: parsed.domicilio ?? user.domicilio ?? '',
+            emergencyName: parsed.emergencyName ?? user.contacto_emergencia_name ?? '',
+            emergencyPhone: parsed.emergencyPhone ?? user.contacto_emergencia_phone ?? '',
+          }});
+          setIsEditing(true);
+          setShowOnboardingPopup(true);
+          setDataLoading(false);
+          return;
+        }
+      } catch { /* ignorar */ }
+    }
+
+    // Sin draft o forzado: cargar desde la DB
     dispatch({ type: 'LOAD_USER', payload: {
       name: user.name || '',
       genero: user.genero || '',
@@ -97,7 +143,7 @@ export default function PerfilPage() {
       emergencyName: user.contacto_emergencia_name || '',
       emergencyPhone: user.contacto_emergencia_phone || '',
     }});
-    
+
     if (!user.onboarding_complete) {
       setIsEditing(true);
       setShowOnboardingPopup(true);
@@ -148,6 +194,8 @@ export default function PerfilPage() {
 
       if (!user.onboarding_complete) {
         await completeOnboardingAsync(user.email, profileUpdates);
+        // Limpiar draft de localStorage al completar el onboarding
+        try { localStorage.removeItem('rv_onboarding_draft'); } catch { /* ignorar */ }
       } else {
         await updateProfileAsync(user.email, profileUpdates);
       }
@@ -799,10 +847,10 @@ export default function PerfilPage() {
             </div>
             <div className="space-y-2">
               <h2 className={`${archivoFont.className} text-2xl font-black uppercase tracking-tight text-slate-900`}>
-                Completa tu Perfil
+                Onboarding pendiente
               </h2>
               <p className="text-slate-600 text-sm leading-relaxed font-medium">
-                Deberás completar todos tus datos personales, de residencia y de contacto de emergencia para poder unirte a un equipo y comenzar a entrenar.
+                Por favor completa tu perfil para poder continuar. Deberás ingresar tus datos personales, de residencia y de contacto de emergencia.
               </p>
             </div>
             <button
