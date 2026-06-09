@@ -137,11 +137,21 @@ export default function EquiposPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
+    <div data-equipos-page className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-8 relative bg-cover bg-center bg-fixed"
+      style={{ backgroundImage: `url('/fondo_web.webp')` }}
+    >
+      <style>{`
+        @media (max-width: 768px) {
+          [data-equipos-page] {
+            background-image: url('/fondo_mobile.webp') !important;
+          }
+        }
+      `}</style>
+      <div className="fixed inset-0 bg-white/70 backdrop-blur-sm pointer-events-none z-0" />
       <HeaderAlert user={user} />
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {actionError && (
           <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl flex items-center justify-between gap-3">
             <span>{actionError}</span>
