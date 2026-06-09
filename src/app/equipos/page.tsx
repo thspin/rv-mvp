@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTeamsAsync, joinTeamAsync, leaveTeamAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
+import { getTeamsAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
+import { requestJoinTeamAction, leaveTeamAction } from '@/lib/actions';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Navbar from '@/components/Navbar';
 import HeaderAlert from '@/components/HeaderAlert';
@@ -17,13 +18,16 @@ const archivoFont = Archivo({
 
 export default function EquiposPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuthGuard();
+  const { user, isLoading, setUser } = useAuthGuard();
   const [teams, setTeams] = useState<Team[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [searchTerm] = useState('');
   const [activeTeamDetails, setActiveTeamDetails] = useState<Team | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [allAthletes, setAllAthletes] = useState<Athlete[]>([]);
+  const [pendingTeamId, setPendingTeamId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Computaciones para el modal "Ver equipo"
   const activeTeamAdmin = activeTeamDetails
@@ -77,15 +81,41 @@ export default function EquiposPage() {
   }, [user]);
 
   const handleJoinTeam = async (teamId: string) => {
-    if (!user) return;
-    await joinTeamAsync(user.email, teamId);
-    loadData();
+    if (!user || pendingTeamId || cancelling) return;
+    setActionError(null);
+    setPendingTeamId(teamId);
+    try {
+      const result = await requestJoinTeamAction(teamId);
+      if (result.success) {
+        setUser(result.data);
+        await loadData();
+      } else {
+        setActionError(`No se pudo enviar la solicitud (${result.code}): ${result.error}`);
+      }
+    } catch (err) {
+      setActionError(`Error inesperado al unirse: ${String(err)}`);
+    } finally {
+      setPendingTeamId(null);
+    }
   };
 
   const handleCancelRequest = async () => {
-    if (!user) return;
-    await leaveTeamAsync(user.email);
-    loadData();
+    if (!user || pendingTeamId || cancelling) return;
+    setActionError(null);
+    setCancelling(true);
+    try {
+      const result = await leaveTeamAction();
+      if (result.success) {
+        setUser(result.data);
+        await loadData();
+      } else {
+        setActionError(`No se pudo cancelar la solicitud (${result.code}): ${result.error}`);
+      }
+    } catch (err) {
+      setActionError(`Error inesperado al cancelar: ${String(err)}`);
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const filteredTeams = useMemo(() => 
@@ -111,6 +141,17 @@ export default function EquiposPage() {
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {actionError && (
+          <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl flex items-center justify-between gap-3">
+            <span>{actionError}</span>
+            <button
+              onClick={() => setActionError(null)}
+              className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        )}
         {/* HEADER */}
         <div className="relative mb-12 text-left">
           {/* Decorative blur blobs */}
@@ -127,9 +168,6 @@ export default function EquiposPage() {
           </div>
           <div className="h-[2px] w-20 bg-gradient-to-r from-[#1e4e6d] to-transparent mt-6 rounded-full" />
         </div>
-
-
-
         {/* TEAMS GRID */}
         {filteredTeams.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center">
@@ -147,8 +185,8 @@ export default function EquiposPage() {
               return (
                 <div
                   key={team.id}
-                  onClick={() => {
-                    if (isActive) {
+                  onClick={(e) => {
+                    if (isActive && (e.target as HTMLElement).closest('button') === null) {
                       router.push('/dashboard');
                     }
                   }}
@@ -158,6 +196,14 @@ export default function EquiposPage() {
                 >
                   {/* Top Cover Image (Centered Logo on Black Background) */}
                   <div className="relative h-56 w-full overflow-hidden bg-black flex items-center justify-center p-4">
+                    {/* Background watermark logo */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/rv-logo.png"
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-contain opacity-[0.07] scale-150 pointer-events-none select-none"
+                    />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
                       src={team.logo_url || '/rv-logo.png'} 
@@ -198,9 +244,10 @@ export default function EquiposPage() {
                         {!isActive && (
                           <button
                             onClick={handleCancelRequest}
-                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-semibold text-center transition-all duration-150 cursor-pointer shadow-sm"
+                            disabled={cancelling}
+                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-semibold text-center transition-all duration-150 cursor-pointer shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                           >
-                            Cancelar Solicitud
+                            {cancelling ? 'Cancelando...' : 'Cancelar Solicitud'}
                           </button>
                         )}
                       </div>
@@ -209,10 +256,11 @@ export default function EquiposPage() {
                         {isProfileComplete(user) ? (
                           <button
                             onClick={() => handleJoinTeam(team.id)}
-                            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1"
+                            disabled={pendingTeamId === team.id}
+                            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 cursor-pointer flex items-center justify-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
                           >
-                            Unirse
-                            <ArrowRight className="w-3 h-3" />
+                            {pendingTeamId === team.id ? 'Enviando...' : 'Unirse'}
+                            {pendingTeamId !== team.id && <ArrowRight className="w-3 h-3" />}
                           </button>
                         ) : (
                           <button

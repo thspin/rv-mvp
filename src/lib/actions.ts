@@ -9,11 +9,11 @@ type ActionResult =
   | { success: true; data: Athlete }
   | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'CREATE_ERROR' | 'UNKNOWN' }
 
-export async function getCurrentUserAction(): Promise<Athlete | null> {
+export async function getCurrentUserAction(): Promise<Athlete> {
   const result = await getCurrentUserActionDetailed()
   if (result.success) return result.data
   console.error(`[getCurrentUserAction] ${result.code}:`, result.error)
-  return null
+  throw new Error(result.error)
 }
 
 export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
@@ -110,6 +110,73 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
     }
 
     return { success: false, error: 'upsert returned no data', code: 'UNKNOWN' }
+  } catch (err) {
+    return { success: false, error: String(err), code: 'UNKNOWN' }
+  }
+}
+
+type TeamActionResult =
+  | { success: true; data: Athlete }
+  | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'UNKNOWN' }
+
+async function requireSession() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user?.email) {
+    return { session: null, error: 'No active session' as const }
+  }
+  return { session, error: null as null }
+}
+
+export async function requestJoinTeamAction(teamId: string): Promise<TeamActionResult> {
+  try {
+    const { session, error } = await requireSession()
+    if (error || !session) {
+      return { success: false, error, code: 'NO_SESSION' }
+    }
+
+    const supabase = createServiceClient()
+    const { data, error: updateError } = await supabase
+      .from('athletes')
+      .update({ team_id: teamId, team_status: 'pendiente' })
+      .eq('user_id', session.user.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      return { success: false, error: updateError.message, code: 'DB_ERROR' }
+    }
+    return { success: true, data: fromDbAthlete(data) }
+  } catch (err) {
+    return { success: false, error: String(err), code: 'UNKNOWN' }
+  }
+}
+
+export async function leaveTeamAction(): Promise<TeamActionResult> {
+  try {
+    const { session, error } = await requireSession()
+    if (error || !session) {
+      return { success: false, error, code: 'NO_SESSION' }
+    }
+
+    const supabase = createServiceClient()
+    const { data, error: updateError } = await supabase
+      .from('athletes')
+      .update({
+        team_id: null,
+        team_status: null,
+        payment_status: null,
+        payment_receipt_url: null,
+        payment_method: null,
+        payment_motivo_rechazo: null,
+      })
+      .eq('user_id', session.user.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      return { success: false, error: updateError.message, code: 'DB_ERROR' }
+    }
+    return { success: true, data: fromDbAthlete(data) }
   } catch (err) {
     return { success: false, error: String(err), code: 'UNKNOWN' }
   }

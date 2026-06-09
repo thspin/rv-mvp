@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { addMonthsWithClamp } from '@/lib/utils'
+import { getCurrentUserAction } from '@/lib/actions'
 
 export interface Team {
   id: string;
@@ -392,6 +393,11 @@ export async function requestJoinTeamAsync(email: string, teamId: string): Promi
   });
 }
 
+export async function joinTeamAndReturnAsync(email: string, teamId: string): Promise<Athlete | null> {
+  await requestJoinTeamAsync(email, teamId);
+  return await getCurrentUserAction();
+}
+
 export function requestJoinTeam(email: string, teamId: string) {
   requestJoinTeamAsync(email, teamId);
 }
@@ -409,6 +415,18 @@ export async function leaveTeamAsync(email: string): Promise<void> {
     payment_method: undefined,
     payment_motivo_rechazo: undefined,
   });
+}
+
+export async function leaveTeamAndReturnAsync(email: string): Promise<Athlete | null> {
+  await updateAthleteProfileAsync(email, {
+    team_id: null,
+    team_status: null,
+    payment_status: null,
+    payment_receipt_url: undefined,
+    payment_method: undefined,
+    payment_motivo_rechazo: undefined,
+  });
+  return await getCurrentUserAction();
 }
 
 export function leaveTeam(email: string) {

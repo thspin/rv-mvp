@@ -141,7 +141,7 @@ VALUES (
     'Martes y Jueves 19:00 hs, Sábados 8:00 hs',
     'Ramiro Valenzuela',
     'Para el entrenamiento de este martes, traer linterna frontal y mochila de hidratación. Haremos cuestas acumuladas de 400m en el circuito de cerro.',
-    'Mendoza, Argentina',
+    'La Rioja, Argentina',
     '/rv-logo.png',
     '2016-06-08',
     'Trail Running,Ultra Trail,Ruta / Calle,Funcional'
