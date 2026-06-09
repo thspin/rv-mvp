@@ -44,19 +44,45 @@ Una vez que tu código esté en GitHub, puedes desplegar la aplicación en Verce
 1. Ve al panel de control de [Vercel](https://vercel.com/) e inicia sesión.
 2. Haz clic en **Add New** -> **Project** (Añadir Nuevo -> Proyecto).
 3. En la lista de repositorios de GitHub, busca tu repositorio (`rv-club-gestion`) y haz clic en **Import** (Importar).
-4. En la sección **Environment Variables** (Variables de Entorno), agrega las siguientes claves (las obtienes de Supabase -> *Settings* -> *API*):
-   - `NEXT_PUBLIC_SUPABASE_URL`: La URL del proyecto (ej: `https://xxxxxx.supabase.co`).
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: La clave de API anónima pública (*anon public key*).
+4. En la sección **Environment Variables** (Variables de Entorno), agrega las siguientes claves:
+
+   | Variable | Fuente |
+   |----------|--------|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase -> Settings -> API |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase -> Settings -> API |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase -> Settings -> API (service_role) |
+   | `DATABASE_URL` | Supabase -> Database -> Connection string (Pooler) |
+   | `GOOGLE_CLIENT_ID` | Google Cloud Console -> Credentials |
+   | `GOOGLE_CLIENT_SECRET` | Google Cloud Console -> Credentials |
+   | `BETTER_AUTH_URL` | `https://rv-mvp.vercel.app` |
+   | `BETTER_AUTH_SECRET` | Generar con `openssl rand -base64 32` |
+
 5. Haz clic en **Deploy** (Desplegar).
    - *Vercel compilará la aplicación y la publicará en la web asignándote un dominio público (ej: `https://rv-club-gestion.vercel.app`).*
 
 ---
 
-## 4. Configurar Google Auth (Opcional)
+## 4. Configurar Google Auth
 
-Si utilizas autenticación de Google en Supabase, debes configurar las redirecciones de la siguiente manera:
+La aplicación usa **Better Auth** (no Supabase Auth) para la autenticación con Google. Sigue estos pasos para configurar las credenciales:
 
-1. En la consola de Supabase, ve a **Auth** -> **URL Configuration**.
-2. En **Redirect URLs**, añade la URL que te asignó Vercel seguida del endpoint de retorno:
-   `https://tu-proyecto.vercel.app/auth/callback`
-3. En la configuración del proveedor Google (en Supabase Auth -> Providers -> Google), asegúrate de tener colocados tu `Client ID` y `Client Secret` obtenidos de Google Cloud Console.
+### En Google Cloud Console
+
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/), selecciona tu proyecto y ve a **APIs & Services** -> **Credentials**.
+2. Crea o edita una **OAuth 2.0 Client ID** (tipo **Web application**).
+3. En **Authorized JavaScript origins**, agrega:
+   `https://rv-mvp.vercel.app`
+4. En **Authorized redirect URIs**, agrega:
+   `https://rv-mvp.vercel.app/api/auth/callback/google`
+
+### En Vercel
+
+Agrega las siguientes variables de entorno en Vercel (Settings -> Environment Variables):
+
+| Variable | Descripción |
+|----------|-------------|
+| `GOOGLE_CLIENT_ID` | Client ID de Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | Client Secret de Google Cloud Console |
+| `BETTER_AUTH_URL` | `https://rv-mvp.vercel.app` |
+| `BETTER_AUTH_SECRET` | Generar con `openssl rand -base64 32` |
+| `DATABASE_URL` | Connection string de Supabase (Pooler) |
