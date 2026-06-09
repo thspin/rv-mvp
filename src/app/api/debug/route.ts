@@ -2,7 +2,6 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getCurrentUserActionDetailed } from '@/lib/actions'
-import { Pool } from 'pg'
 
 export async function GET() {
   const result: Record<string, unknown> = {
@@ -18,22 +17,6 @@ export async function GET() {
     GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
     VERCEL_URL: process.env.VERCEL_URL || null,
-  }
-
-  // Temporary Migration: Update logo_url from .svg to .png
-  try {
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-    });
-    const updateRes = await pool.query(`
-      UPDATE teams SET logo_url = '/rv-logo.png' WHERE logo_url = '/rv-logo.svg';
-      ALTER TABLE teams ALTER COLUMN logo_url SET DEFAULT '/rv-logo.png';
-    `);
-    result.migration = { success: true, info: 'teams logo updated successfully from .svg to .png', detail: updateRes };
-    await pool.end();
-  } catch (err) {
-    result.migration = { success: false, error: String(err) };
   }
 
   // 2. Check Better Auth session
@@ -82,4 +65,5 @@ export async function GET() {
 
   return NextResponse.json(result)
 }
+
 
