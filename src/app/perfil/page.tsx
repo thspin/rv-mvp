@@ -86,6 +86,7 @@ export default function PerfilPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showOnboardingPopup, setShowOnboardingPopup] = useState(false);
+  const [popupDismissed, setPopupDismissed] = useState(false);
   const [form, dispatch] = useReducer(formReducer, initialFormState);
 
   const DRAFT_KEY = 'rv_onboarding_draft';
@@ -120,6 +121,7 @@ export default function PerfilPage() {
 
   // Messages and Upload Statuses
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [docMessage, setDocMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const getAvatarSrc = (avatarUrl?: string) => {
     if (!avatarUrl) return null;
@@ -156,7 +158,9 @@ export default function PerfilPage() {
             emergencyPhone: parsed.emergencyPhone ?? user.contacto_emergencia_phone ?? '',
           }});
           setIsEditing(true);
-          setShowOnboardingPopup(true);
+          if (!popupDismissed) {
+            setShowOnboardingPopup(true);
+          }
           setDataLoading(false);
           return;
         }
@@ -183,7 +187,9 @@ export default function PerfilPage() {
 
     if (!user.onboarding_complete) {
       setIsEditing(true);
-      setShowOnboardingPopup(true);
+      if (!popupDismissed) {
+        setShowOnboardingPopup(true);
+      }
     }
     setDataLoading(false);
   };
@@ -286,7 +292,7 @@ export default function PerfilPage() {
             await updateProfileAsync(user.email, { avatar_url: base64data });
             const freshUser = await getCurrentUserAction();
             if (freshUser) setUser(freshUser);
-            setMessage({ type: 'success', text: 'Foto de perfil actualizada (Demo).' });
+            setDocMessage({ type: 'success', text: 'Foto de perfil actualizada (Demo).' });
           };
           reader.readAsDataURL(file);
         } else {
@@ -296,15 +302,15 @@ export default function PerfilPage() {
           await updateProfileAsync(user.email, updates);
           const freshUser = await getCurrentUserAction();
           if (freshUser) setUser(freshUser);
-          setMessage({ type: 'success', text: `${type === 'documento' ? 'Documento' : 'Apto médico'} subido correctamente (Demo).` });
+          setDocMessage({ type: 'success', text: `${type === 'documento' ? 'Documento' : 'Apto médico'} subido correctamente (Demo).` });
         }
         return;
       }
 
       const bucketName = type === 'documento' || type === 'avatar' ? 'receipts' : 'medical-certs';
-      const fileName = await uploadFile(file, bucketName, user.email, type);
+      const { fileName, error: uploadErr } = await uploadFile(file, bucketName, user.email, type);
       if (!fileName) {
-        setMessage({ type: 'error', text: uploadError || 'Error al subir el archivo.' });
+        setDocMessage({ type: 'error', text: uploadErr || 'Error al subir el archivo.' });
         return;
       }
 
@@ -318,7 +324,7 @@ export default function PerfilPage() {
       const freshUser = await getCurrentUserAction();
       if (freshUser) setUser(freshUser);
       
-      setMessage({ 
+      setDocMessage({ 
         type: 'success', 
         text: type === 'documento' 
           ? 'Documento subido correctamente.' 
@@ -328,7 +334,7 @@ export default function PerfilPage() {
       });
     } catch (err) {
       console.error('Error uploading file:', err);
-      setMessage({ type: 'error', text: 'Error al subir el archivo. Intenta nuevamente.' });
+      setDocMessage({ type: 'error', text: 'Error al subir el archivo. Intenta nuevamente.' });
     }
   };
 
@@ -357,6 +363,7 @@ export default function PerfilPage() {
                 onClick={() => {
                   setIsEditing(true);
                   setMessage(null);
+                  setDocMessage(null);
                 }}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-150 flex items-center gap-1.5 cursor-pointer"
               >
@@ -369,6 +376,7 @@ export default function PerfilPage() {
                   onClick={() => {
                     setIsEditing(false);
                     setMessage(null);
+                    setDocMessage(null);
                     loadUser(); // Restore state
                   }}
                   className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer shadow-sm"
@@ -817,6 +825,17 @@ export default function PerfilPage() {
                   Actualizar Documentación
                 </h3>
 
+                {/* Doc Message Alert */}
+                {docMessage && (
+                  <div className={`p-4 rounded-xl text-sm font-medium max-w-md mx-auto ${
+                    docMessage.type === 'success' 
+                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                      : 'bg-red-50 border border-red-200 text-red-700'
+                  }`}>
+                    {docMessage.text}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Photo DNI Upload */}
                   <div className="space-y-4 p-6 bg-slate-50/60 border border-slate-200/80 rounded-2xl flex flex-col justify-between items-center text-center">
@@ -924,7 +943,10 @@ export default function PerfilPage() {
               </p>
             </div>
             <button
-              onClick={() => setShowOnboardingPopup(false)}
+              onClick={() => {
+                setShowOnboardingPopup(false);
+                setPopupDismissed(true);
+              }}
               className="w-full py-3 bg-[#1e4e6d] hover:bg-[#153850] text-white font-bold text-sm rounded-full transition-all cursor-pointer shadow-md"
             >
               Completar Perfil
