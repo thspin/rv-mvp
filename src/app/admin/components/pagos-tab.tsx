@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Athlete } from '@/lib/db';
 import { X, Check, XCircle, Eye, ShieldAlert, CreditCard } from 'lucide-react';
-import Image from 'next/image';
 
 interface PagosTabProps {
   pendingPagos: Athlete[];
@@ -16,9 +15,11 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
   const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; name: string } | null>(null);
   const [rejectingAthlete, setRejectingAthlete] = useState<Athlete | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-
-  // Default price fallback
-  const defaultAmount = 17000;
+  
+  // State for Option A: Approval Modal
+  const [approvingAthlete, setApprovingAthlete] = useState<Athlete | null>(null);
+  const [method, setMethod] = useState<'Transferencia' | 'Efectivo' | 'Condonar'>('Transferencia');
+  const [amount, setAmount] = useState<number>(17000);
 
   const handleOpenReceipt = (athlete: Athlete) => {
     if (!athlete.payment_receipt_url) return;
@@ -31,6 +32,24 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
     onReject(rejectingAthlete, rejectReason);
     setRejectingAthlete(null);
     setRejectReason('');
+  };
+
+  const handleOpenApproveModal = (athlete: Athlete) => {
+    setApprovingAthlete(athlete);
+    // Default to Transferencia if they uploaded a receipt, otherwise Efectivo
+    const defaultMethod = athlete.payment_status === 'Pendiente_Verificacion' ? 'Transferencia' : 'Efectivo';
+    setMethod(defaultMethod);
+    setAmount(17000);
+  };
+
+  const handleConfirmApprove = () => {
+    if (!approvingAthlete) return;
+    if (method === 'Condonar') {
+      onCondone(approvingAthlete);
+    } else {
+      onApprove(approvingAthlete, amount, method);
+    }
+    setApprovingAthlete(null);
   };
 
   return (
@@ -96,7 +115,7 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                     {hasReceipt && isVerifying ? (
                       <button
                         onClick={() => handleOpenReceipt(athlete)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Ver Comprobante
@@ -110,38 +129,22 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                   </div>
 
                   <div className="flex gap-1.5">
-                    {/* Condonar cuota */}
-                    <button
-                      onClick={() => onCondone(athlete)}
-                      className="px-3 py-1.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      Condonar
-                    </button>
-
                     {isVerifying && (
                       <button
                         onClick={() => setRejectingAthlete(athlete)}
                         className="p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl cursor-pointer transition-all flex items-center justify-center"
                         title="Rechazar Comprobante"
                       >
-                        <XCircle className="w-4 h-4" />
+                        <XCircle className="w-4.5 h-4.5" />
                       </button>
                     )}
 
                     <button
-                      onClick={() => onApprove(athlete, defaultAmount, 'Transferencia')}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-550 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                      onClick={() => handleOpenApproveModal(athlete)}
+                      className="inline-flex items-center gap-1 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      Aprobar Transf.
-                    </button>
-
-                    <button
-                      onClick={() => onApprove(athlete, defaultAmount, 'Efectivo')}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Aprobar Efec.
+                      Aprobar
                     </button>
                   </div>
                 </div>
@@ -182,6 +185,86 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                   />
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Simplificado de Aprobación/Procesamiento (Opción A) */}
+      {approvingAthlete && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-200">
+          <div className="bg-card rounded-2xl border border-border max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Aprobar Pago</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Atleta: {approvingAthlete.name}</p>
+            </div>
+
+            {/* Selector de Método de Pago */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Medio de Pago</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'Transferencia', label: 'Transf.', color: 'border-indigo-500 text-indigo-650 dark:text-indigo-400 bg-indigo-500/5' },
+                  { value: 'Efectivo', label: 'Efectivo', color: 'border-emerald-500 text-emerald-650 dark:text-emerald-400 bg-emerald-500/5' },
+                  { value: 'Condonar', label: 'Condonar', color: 'border-amber-500 text-amber-650 dark:text-amber-400 bg-amber-500/5' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setMethod(opt.value as any);
+                      if (opt.value === 'Condonar') {
+                        setAmount(0);
+                      } else if (amount === 0) {
+                        setAmount(17000);
+                      }
+                    }}
+                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                      method === opt.value
+                        ? `${opt.color} ring-2 ring-primary/20 border-current`
+                        : 'border-border text-muted-foreground bg-transparent hover:bg-muted'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Importe a Abonar */}
+            {method !== 'Condonar' ? (
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Monto (ARS)</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    className="w-full pl-7 pr-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary font-bold"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-[11px] text-amber-800 dark:text-amber-400 font-medium leading-normal">
+                <strong>Condonación de cuota:</strong> Se condonará la cuota mensual ($0) y el atleta quedará al día de forma inmediata.
+              </div>
+            )}
+
+            {/* Acciones */}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setApprovingAthlete(null)}
+                className="flex-1 py-2.5 bg-muted text-foreground text-xs font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmApprove}
+                className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-500 transition-colors cursor-pointer"
+              >
+                Confirmar
+              </button>
             </div>
           </div>
         </div>
