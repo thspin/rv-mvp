@@ -4,7 +4,6 @@ import { Athlete } from '@/lib/db';
 
 interface AtletasTabProps {
   activeMembers: Athlete[];
-  onManualPayment: (athlete: Athlete) => void;
   onExpel: (athlete: Athlete) => void;
 }
 
@@ -38,7 +37,7 @@ function AptoBadge({ status }: { status: string | null | undefined }) {
   );
 }
 
-export function AtletasTab({ activeMembers, onManualPayment, onExpel }: AtletasTabProps) {
+export function AtletasTab({ activeMembers, onExpel }: AtletasTabProps) {
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -46,7 +45,7 @@ export function AtletasTab({ activeMembers, onManualPayment, onExpel }: AtletasT
           <thead className="bg-muted">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Atleta</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">DNI</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Teléfono</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Cuota</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Apto</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-foreground">Acciones</th>
@@ -55,30 +54,21 @@ export function AtletasTab({ activeMembers, onManualPayment, onExpel }: AtletasT
           <tbody className="divide-y divide-border">
             {activeMembers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
                   No hay atletas activos
                 </td>
               </tr>
             ) : (
               activeMembers.map(athlete => (
                 <tr key={athlete.id}>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-sm">
                     <p className="font-medium text-foreground">{athlete.name || "Sin nombre"}</p>
-                    <p className="text-xs text-muted-foreground">{athlete.email}</p>
                   </td>
-                  <td className="px-4 py-3 text-sm text-foreground">{athlete.dni || "-"}</td>
-                  <td className="px-4 py-3"><PaymentBadge status={athlete.payment_status} /></td>
-                  <td className="px-4 py-3"><AptoBadge status={athlete.apto_medico_status} /></td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-sm text-foreground">{athlete.phone || "-"}</td>
+                  <td className="px-4 py-3 text-sm"><PaymentBadge status={athlete.payment_status} /></td>
+                  <td className="px-4 py-3 text-sm"><AptoBadge status={athlete.apto_medico_status} /></td>
+                  <td className="px-4 py-3 text-sm text-right">
                     <div className="flex gap-2 justify-end">
-                      {athlete.payment_status !== "Pagado" && athlete.payment_status !== "Pendiente_Verificacion" && (
-                        <button
-                          onClick={() => onManualPayment(athlete)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 cursor-pointer"
-                        >
-                          Pago manual
-                        </button>
-                      )}
                       <button
                         onClick={() => onExpel(athlete)}
                         className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 cursor-pointer"

@@ -402,7 +402,6 @@ export default function AdminPage() {
         {activeTab === "atletas" && (
           <AtletasTab
             activeMembers={activeMembers}
-            onManualPayment={handleManualPayment}
             onExpel={handleExpelAthlete}
           />
         )}
