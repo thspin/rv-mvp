@@ -80,8 +80,6 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                     <h3 className="font-bold text-foreground text-base leading-tight">
                       {athlete.name || 'Sin nombre'}
                     </h3>
-                    <p className="text-xs text-muted-foreground">{athlete.email}</p>
-                    {athlete.phone && <p className="text-xs text-muted-foreground">Teléfono: {athlete.phone}</p>}
                   </div>
 
                   {/* Badges de Mora & Estado */}

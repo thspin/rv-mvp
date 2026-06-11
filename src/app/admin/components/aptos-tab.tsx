@@ -31,8 +31,6 @@ export function AptosTab({ pendingAptos, onApprove, onReject }: AptosTabProps) {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h3 className="font-semibold text-foreground">{athlete.name || "Sin nombre"}</h3>
-                <p className="text-xs text-muted-foreground">{athlete.email}</p>
-                {athlete.phone && <p className="text-xs text-muted-foreground mt-0.5">Teléfono: {athlete.phone}</p>}
               </div>
               <div className="flex gap-2 items-center">
                 {athlete.apto_medico_url && (
