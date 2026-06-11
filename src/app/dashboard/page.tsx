@@ -302,11 +302,9 @@ export default function AthleteDashboard() {
               <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative overflow-hidden">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                    {team.logo_url && (
-                      <div className="w-20 h-20 rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center p-1.5 border border-slate-200 shadow-sm flex-shrink-0">
-                        <Image src={team.logo_url} alt={team.name} width={80} height={80} className="w-full h-full object-contain" />
-                      </div>
-                    )}
+                    <div className="w-20 h-20 rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center p-1.5 border border-slate-200 shadow-sm flex-shrink-0">
+                      <Image src="/rv-logo.png" alt={team.name} width={80} height={80} className="w-full h-full object-contain" />
+                    </div>
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {user.payment_status === 'Pagado' ? (
