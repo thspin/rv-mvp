@@ -386,7 +386,7 @@ export default function AthleteDashboard() {
                     {/* ENTRENAMIENTOS DIARIOS */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
                       {/* Header con acento */}
-                      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 sm:px-8 py-5 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 sm:px-8 py-5 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Dumbbell className="w-5 h-5 text-white" />
@@ -395,7 +395,7 @@ export default function AthleteDashboard() {
                             <h3 className={`${archivoFont.className} text-base sm:text-lg font-black text-white uppercase tracking-tight leading-none`}>
                               Planificación Diaria
                             </h3>
-                            <p className="text-emerald-100 text-[11px] font-semibold mt-0.5">
+                            <p className="text-blue-100 text-[11px] font-semibold mt-0.5">
                               {parsedShifts ? `${parsedShifts.length} turno${parsedShifts.length > 1 ? 's' : ''} disponible${parsedShifts.length > 1 ? 's' : ''}` : 'Sin turnos configurados'}
                             </p>
                           </div>
@@ -530,7 +530,7 @@ export default function AthleteDashboard() {
                   <div className="space-y-6">
                     {/* FONDO DEL FIN DE SEMANA */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Sun className="w-4.5 h-4.5 text-white" />
@@ -750,7 +750,7 @@ export default function AthleteDashboard() {
 
                     {/* APTO FÍSICO */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-rose-500 to-pink-500 px-6 sm:px-8 py-5 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 sm:px-8 py-5 rounded-t-[32px]">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -760,7 +760,7 @@ export default function AthleteDashboard() {
                               <h3 className={`${archivoFont.className} text-base sm:text-lg font-black text-white uppercase tracking-tight leading-none`}>
                                 Apto Físico
                               </h3>
-                              <p className="text-rose-100 text-[11px] font-semibold mt-0.5">
+                              <p className="text-blue-100 text-[11px] font-semibold mt-0.5">
                                 Certificado médico obligatorio
                               </p>
                             </div>
@@ -852,7 +852,7 @@ export default function AthleteDashboard() {
 
                     {/* CONTACTO ENTRENADOR */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-emerald-500 to-green-500 px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <MessageCircle className="w-4.5 h-4.5 text-white" />
@@ -892,7 +892,7 @@ export default function AthleteDashboard() {
 
                     {/* CUMPLEAÑOS DE LA SEMANA */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-violet-500 to-purple-500 px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Cake className="w-4.5 h-4.5 text-white" />
