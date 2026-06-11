@@ -326,7 +326,7 @@ export default function AdminPage() {
           {/* Equipo Tab */}
           {activeTab === "equipo" && team && (
           <div className="bg-card rounded-xl p-6 border border-border">
-            <h2 className="text-xl font-semibold text-foreground mb-6">{team.name}</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-6">Configuración del Equipo</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
