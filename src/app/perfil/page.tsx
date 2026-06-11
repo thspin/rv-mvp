@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useReducer } from 'react';
+import Image from 'next/image';
 import { updateProfileAsync, completeOnboardingAsync, Athlete } from '@/lib/db';
 import { getCurrentUserAction } from '@/lib/actions';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import Navbar from '@/components/Navbar';
 import HeaderAlert from '@/components/HeaderAlert';
-import { isProfileComplete, calculateProfileCompletion } from '@/lib/utils';
+import { calculateProfileCompletion, parseDateLocal } from '@/lib/utils';
 import { 
   User, Save, AlertCircle, Edit3, X, ShieldAlert, 
   MapPin, FileText, Camera, Upload, AlertTriangle, Check
@@ -83,7 +84,7 @@ const formatInputToDbDate = (inputDate: string): string => {
 
 export default function PerfilPage() {
   const { user, isLoading: authLoading, setUser } = useAuthGuard(false);
-  const { uploadFile, uploading, error: uploadError } = useFileUpload();
+  const { uploadFile, uploading } = useFileUpload();
   const [dataLoading, setDataLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -434,7 +435,7 @@ export default function PerfilPage() {
         <div className="space-y-1">
           <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Fecha de Nacimiento</span>
           <p className="text-sm font-bold text-slate-800">
-            {user.fecha_nacimiento ? new Date(user.fecha_nacimiento).toLocaleDateString("es-AR") : 'No especificada'}
+            {user.fecha_nacimiento ? parseDateLocal(user.fecha_nacimiento).toLocaleDateString("es-AR") : 'No especificada'}
           </p>
         </div>
         
@@ -619,11 +620,12 @@ export default function PerfilPage() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent rounded-bl-full pointer-events-none" />
           <div className="relative group flex-shrink-0">
             {getAvatarSrc(user.avatar_url) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img 
+              <Image 
                 src={getAvatarSrc(user.avatar_url)!} 
                 alt={user.name} 
-                className="w-20 h-20 rounded-2xl object-cover shadow-md"
+                width={80}
+                height={80}
+                className="rounded-2xl object-cover shadow-md"
               />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#1e4e6d] to-blue-500 flex items-center justify-center text-white font-black text-3xl shadow-md">

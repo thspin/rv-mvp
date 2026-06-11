@@ -2,6 +2,14 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
 
+const authSecret = (process.env.BETTER_AUTH_SECRET ?? "").trim();
+if (!authSecret) {
+  console.error(
+    "[CRITICAL] BETTER_AUTH_SECRET is not set. Authentication will not work correctly. " +
+    "Generate one with: openssl rand -base64 32"
+  );
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
@@ -16,7 +24,7 @@ const getBaseURL = () => {
 export const auth = betterAuth({
   database: pool,
   baseURL: getBaseURL(),
-  secret: (process.env.BETTER_AUTH_SECRET ?? "").trim(),
+  secret: authSecret,
   socialProviders: {
     google: {
       clientId: (process.env.GOOGLE_CLIENT_ID ?? "").trim(),

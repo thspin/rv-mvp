@@ -16,11 +16,9 @@ import {
   Athlete,
   Team,
   Payment,
-  parseTrainingDays,
-  parseInstructions,
-  type TrainingShift,
-  type ShiftInstructions
 } from "@/lib/db"
+import type { TrainingShift, ShiftInstructions } from "@/lib/db-types"
+import { parseTrainingDays, parseInstructions } from "@/lib/db-types"
 import { useAuthGuard } from "@/hooks/useAuthGuard"
 import { SolicitudesTab } from "./components/solicitudes-tab"
 import { AtletasTab } from "./components/atletas-tab"

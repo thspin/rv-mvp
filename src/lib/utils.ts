@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { Athlete } from '@/lib/db'
+import { Athlete } from '@/lib/db-types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -47,6 +47,11 @@ export function isProfileComplete(user: Athlete | null): boolean {
     user.apto_medico_status !== 'rechazado'
   );
   return hasRequiredFields && hasRequiredDocs && user.onboarding_complete;
+}
+
+export function parseDateLocal(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
 export function calculateProfileCompletion(user: Athlete | null): number {

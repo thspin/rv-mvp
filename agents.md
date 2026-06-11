@@ -9,12 +9,13 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 *   **Framework**: Next.js 16 (App Router).
 *   **Styling**: Tailwind CSS v4 & shadcn/ui.
 *   **Auth**: Better Auth (Google OAuth) — configuración en [auth.ts](file:///src/lib/auth.ts) y [auth-client.ts](file:///src/lib/auth-client.ts).
-*   **Database**: Supabase PostgreSQL (RLS desactivado, autorización en capa de aplicación).
-*   **Storage**: Supabase Storage (anon key del browser para uploads).
-*   **Database Interface**: Local proxy layer in [db.ts](file:///src/lib/db.ts) wrapping the browser anon client.
+*   **Database**: Supabase PostgreSQL (RLS habilitado, autorización en capa de aplicación con service role).
+*   **Storage**: Supabase Storage (uploads vía `/api/storage/upload` con validaciones).
+*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando service role client. Tipos en [db-types.ts](file:///src/lib/db-types.ts).
 *   **Server Actions**: [actions.ts](file:///src/lib/actions.ts) para operaciones que requieren sesión de Better Auth.
 *   **Icons**: Lucide React.
 *   **Utility**: `cn()` (clsx + tailwind-merge) for class composition.
+*   **Images**: `next/image` para optimización automática (AVIF/WebP).
 
 ---
 
@@ -44,26 +45,80 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 
 La autenticación se maneja con **Better Auth** (Google OAuth). Las sesiones se validan con `auth.api.getSession()` en el servidor.
 
-RLS está **desactivado** en las tablas de aplicación (`teams`, `athletes`, `payments`). La autorización se maneja en la capa de aplicación:
-*   El anon key del browser se usa solo para Storage uploads.
-*   Las queries de `db.ts` usan el anon client (RLS desactivado, sin riesgo).
+RLS está **habilitado** en las tablas de aplicación (`teams`, `athletes`, `payments`). La autorización se maneja en la capa de aplicación:
+*   El anon key del browser se usa solo para Storage uploads (a través del upload route handler).
+*   Las queries de `db.ts` usan el service role client (bypassa RLS).
 *   Las operaciones privilegiadas (descarga de archivos, server actions) usan el service role client.
+*   La descarga de archivos verifica ownership del archivo antes de servirlo.
 
 **Rules for AI Assistants:**
 1.  Para verificar sesión de usuario, usar `getCurrentUserAction()` de `@/lib/actions` (server action) o `authClient.useSession()` de `@/lib/auth-client` (client hook).
 2.  Si una operación requiere elevated privileges (como descargar archivos), implementar via API route o Server Action usando `createServiceClient()` de `@/lib/supabase/service`.
 3.  No usar `@supabase/ssr` — fue reemplazado por Better Auth.
+4.  **Todos los uploads deben pasar por `/api/storage/upload`** — nunca subir directamente con el anon client desde el browser.
+5.  **db.ts tiene `'use server'`** — todas las funciones son server actions. Tipos y funciones puras están en `db-types.ts`.
+
+---
+
+## Image Optimization Guidelines
+
+### Reglas obligatorias al agregar imágenes
+
+1.  **Siempre usar `next/image`** en lugar de `<img>` para todas las imágenes.
+    ```tsx
+    import Image from 'next/image';
+    
+    // Para imágenes con dimensiones conocidas
+    <Image src="/logo.png" alt="Logo" width={200} height={100} />
+    
+    // Para imágenes que llenan un contenedor
+    <Image src="/hero.jpg" alt="Hero" fill className="object-cover" />
+    ```
+
+2.  **Formatos recomendados** (en orden de preferencia):
+    *   **AVIF** — Mejor compresión, soportado en browsers modernos
+    *   **WebP** — Buen balance compresión/calidad, amplio soporte
+    *   **PNG** — Solo para imágenes que necesiten transparencia
+    *   **JPG** — Solo para fotos donde AVIF/WebP no estén disponibles
+
+3.  **Remote patterns configurados** en `next.config.ts`:
+    *   `*.supabase.co` — Para archivos de Supabase Storage
+    *   `lh3.googleusercontent.com` — Para avatares de Google OAuth
+    
+    Si necesitas agregar un nuevo dominio remoto, actualiza `remotePatterns` en `next.config.ts`.
+
+4.  **Tamaños de imágenes**:
+    *   Avatares: 200x200px máximo
+    *   Logos de equipos: 400x400px máximo
+    *   Fondos/hero: 1920x1080px máximo
+    *   Thumbnails: 300x300px máximo
+
+5.  **Optimización de archivos**:
+    *   Usar herramientas como TinyPNG, Squoosh, o ImageOptim antes de subir imágenes estáticas
+    *   Para imágenes dinámicas (uploads de usuarios), el upload route handler valida:
+        *   Tamaño máximo: 5MB
+        *   Tipos permitidos: image/jpeg, image/png, image/webp, image/gif, application/pdf
+        *   Extensiones: jpg, jpeg, png, webp, gif, pdf
+
+6.  **No usar fondos decorativos pesados**. Si se necesita un fondo, usar:
+    *   Gradientes CSS (preferido)
+    *   SVGs inline para patrones
+    *   Imágenes optimizadas en WebP/AVIF con lazy loading
+
+7.  **Placeholders**: Para imágenes que cargan async, usar el prop `placeholder="blur"` con `blurDataURL` para evitar layout shift.
 
 ---
 
 ## Coding Style & Rules
 
-1.  **Strict Typing**: Always type function parameters, states, and return values using interface contracts in `src/lib/db.ts` or `src/types/`.
+1.  **Strict Typing**: Always type function parameters, states, and return values using interface contracts in `src/lib/db-types.ts`.
 2.  **No Direct Supabase Calls in Pages**: Do not use `supabase.from(...)` directly inside page files for core database transactions. Write a helper function in [db.ts](file:///src/lib/db.ts) and call it from the page instead.
 3.  **Translations**: The app UI must be entirely in **Spanish** (`es-AR`).
 4.  **Error Handling**: Wrap database operations in `try-catch` blocks and log descriptive error outputs. Keep UI states interactive during loading.
 5.  **Auth**: Para verificar sesión en client components usar `authClient.useSession()` de `@/lib/auth-client`. Para server actions usar `getCurrentUserAction()` de `@/lib/actions`.
-6.  **Storage uploads**: Usar `createClient()` de `@/lib/supabase/client` (anon key) solo para uploads de Supabase Storage desde el browser.
+6.  **Storage uploads**: Siempre usar el route handler `/api/storage/upload` — nunca subir directamente con el anon client desde el browser.
+7.  **Images**: Siempre usar `next/image` en lugar de `<img>`. Ver sección "Image Optimization Guidelines" más abajo.
+8.  **Column Projection**: En queries de Supabase, especificar las columnas necesarias en lugar de `select('*')`. Usar las constantes `TEAM_COLUMNS`, `ATHLETE_COLUMNS`, `PAYMENT_COLUMNS` definidas en `db.ts`.
 
 ---
 

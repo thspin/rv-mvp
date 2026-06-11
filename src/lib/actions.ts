@@ -3,7 +3,8 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase/service'
-import { Athlete, fromDbAthlete } from '@/lib/db'
+import type { Athlete } from '@/lib/db-types'
+import { fromDbAthlete } from '@/lib/db-types'
 
 type ActionResult =
   | { success: true; data: Athlete }

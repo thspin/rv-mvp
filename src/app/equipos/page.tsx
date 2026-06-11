@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { getTeamsAsync, Team, Athlete, getAllAthletes } from '@/lib/db';
 import { requestJoinTeamAction, leaveTeamAction } from '@/lib/actions';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
@@ -204,18 +205,18 @@ export default function EquiposPage() {
                   {/* Top Cover Image (Centered Logo on Black Background) */}
                   <div className="relative h-56 w-full overflow-hidden bg-black flex items-center justify-center p-4">
                     {/* Background watermark logo */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src="/rv-logo.png"
                       alt=""
                       aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-contain opacity-[0.07] scale-150 pointer-events-none select-none"
+                      fill
+                      className="object-contain opacity-[0.07] scale-150 pointer-events-none select-none"
                     />
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
+                    <Image 
                       src={team.logo_url || '/rv-logo.png'} 
                       alt={team.name} 
-                      className="w-full h-full object-contain"
+                      fill
+                      className="object-contain"
                     />
                     {isActive && (
                       <span className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full shadow-md z-10">
@@ -314,11 +315,11 @@ export default function EquiposPage() {
           >
             {/* Top Profile Card Header with Background Image */}
             <div className="relative h-64 w-full overflow-hidden bg-black flex items-center justify-center p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
+              <Image 
                 src={activeTeamDetails.logo_url || '/rv-logo.png'} 
                 alt={activeTeamDetails.name} 
-                className="w-full h-full object-contain"
+                fill
+                className="object-contain"
               />
               
               {/* Circular Action Buttons at top */}

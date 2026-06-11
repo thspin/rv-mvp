@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { LogOut, Compass, User } from 'lucide-react';
@@ -10,17 +9,8 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = authClient.useSession();
-  const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    if (pathname === '/equipos') {
-      setActiveIndex(0);
-    } else if (pathname === '/perfil') {
-      setActiveIndex(1);
-    } else {
-      setActiveIndex(-1);
-    }
-  }, [pathname]);
+  const activeIndex = pathname === '/equipos' ? 0 : pathname === '/perfil' ? 1 : -1;
 
   const handleLogout = async () => {
     await authClient.signOut();

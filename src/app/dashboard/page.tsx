@@ -2,18 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   getTeamAsync,
   leaveTeamAsync,
   updateAthleteProfileAsync,
   Team,
   Athlete,
-  getAllAthletes,
-  parseTrainingDays,
-  parseInstructions
+  getTeamMembers,
 } from '@/lib/db';
+import { parseTrainingDays, parseInstructions } from '@/lib/db-types';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { createClient } from '@/lib/supabase/client';
 import Navbar from '@/components/Navbar';
 import HeaderAlert from '@/components/HeaderAlert';
 import {
@@ -32,6 +31,7 @@ import { LoadingScreen } from '@/components/ui/loading-screen';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SectionCard } from '@/components/ui/section-card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { parseDateLocal } from '@/lib/utils';
 
 const archivoFont = Archivo({
   subsets: ['latin'],
@@ -60,7 +60,7 @@ export default function AthleteDashboard() {
   const [certError, setCertError] = useState('');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [uploadingCert, setUploadingCert] = useState(false);
-  const [allAthletes, setAllAthletes] = useState<Athlete[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Athlete[]>([]);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaveFeedback, setLeaveFeedback] = useState('');
 
@@ -70,8 +70,8 @@ export default function AthleteDashboard() {
       router.push('/equipos');
       return;
     }
-    const athletesList = await getAllAthletes();
-    setAllAthletes(athletesList);
+    const members = await getTeamMembers(user.team_id);
+    setTeamMembers(members);
     const teamData = await getTeamAsync(user.team_id);
     setTeam(teamData);
     setDataLoading(false);
@@ -103,18 +103,21 @@ export default function AthleteDashboard() {
     setUploadingReceipt(true);
     setUploadError('');
     try {
-      const supabase = createClient();
-      const fileExt = receiptFile.name.split('.').pop();
-      const fileName = `${user.email.replace(/[@.]/g, '_')}_${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, receiptFile);
+      const formData = new FormData();
+      formData.append('file', receiptFile);
+      formData.append('bucket', 'receipts');
 
-      if (uploadError) throw uploadError;
+      const response = await fetch('/api/storage/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Upload failed');
 
       await updateAthleteProfileAsync(user.email, {
         payment_status: 'Pendiente_Verificacion',
-        payment_receipt_url: fileName,
+        payment_receipt_url: result.filename,
         payment_motivo_rechazo: undefined,
       });
 
@@ -137,19 +140,21 @@ export default function AthleteDashboard() {
     setUploadingCert(true);
     setCertError('');
     try {
-      const supabase = createClient();
-      const fileExt = certFile.name.split('.').pop();
-      const fileName = `${user.email.replace(/[@.]/g, '_')}_${Date.now()}.${fileExt}`;
+      const formData = new FormData();
+      formData.append('file', certFile);
+      formData.append('bucket', 'medical-certs');
 
-      const { error: uploadError } = await supabase.storage
-        .from('medical-certs')
-        .upload(fileName, certFile);
+      const response = await fetch('/api/storage/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (uploadError) throw uploadError;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Upload failed');
 
       await updateAthleteProfileAsync(user.email, {
         apto_medico_status: 'pendiente_verificacion',
-        apto_medico_url: fileName,
+        apto_medico_url: result.filename,
         apto_medico_motivo_rechazo: undefined,
       });
 
@@ -185,7 +190,7 @@ export default function AthleteDashboard() {
 
   if (!user) return null;
 
-  const teamAdmin = allAthletes.find(a => a.team_id === user.team_id && a.role === 'admin');
+  const teamAdmin = teamMembers.find(a => a.role === 'admin');
   const coachName = teamAdmin ? teamAdmin.name : (team?.coach || 'Raúl');
   const coachPhone = teamAdmin?.phone?.replace(/[^0-9]/g, '') || '5493804592633';
   const whatsappLink = `https://wa.me/${coachPhone}?text=${encodeURIComponent('Hola ' + coachName + ', te escribo desde la app del equipo...')}`;
@@ -204,7 +209,7 @@ export default function AthleteDashboard() {
 
   const birthdaysThisWeek = (() => {
     if (!user.team_id) return [];
-    const members = allAthletes.filter(a => a.team_id === user.team_id && a.team_status === 'activo');
+    const members = teamMembers;
     const today = new Date();
 
     const currentDay = today.getDay();
@@ -219,7 +224,7 @@ export default function AthleteDashboard() {
 
     return members.filter(member => {
       if (!member.fecha_nacimiento) return false;
-      const birthDate = new Date(member.fecha_nacimiento);
+      const birthDate = parseDateLocal(member.fecha_nacimiento);
       if (isNaN(birthDate.getTime())) return false;
 
       const projectThisYear = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
@@ -232,7 +237,7 @@ export default function AthleteDashboard() {
         (projectNextYear >= startOfWeek && projectNextYear <= endOfWeek)
       );
     }).map(member => {
-      const birthDate = new Date(member.fecha_nacimiento!);
+      const birthDate = parseDateLocal(member.fecha_nacimiento!);
       return {
         ...member,
         birthdayStr: birthDate.toLocaleDateString("es-AR", { day: 'numeric', month: 'long' })
@@ -288,8 +293,7 @@ export default function AthleteDashboard() {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                     {team.logo_url && (
                       <div className="w-20 h-20 rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center p-1.5 border border-slate-200 shadow-sm flex-shrink-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
+                        <Image src={team.logo_url} alt={team.name} width={80} height={80} className="w-full h-full object-contain" />
                       </div>
                     )}
                     <div className="space-y-2">

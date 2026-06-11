@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { Archivo } from 'next/font/google';
@@ -13,26 +13,14 @@ const archivoFont = Archivo({
 export default function Login() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [isBgLoaded, setIsBgLoaded] = useState(false);
 
   const { data: session, isPending } = authClient.useSession();
 
-  useEffect(() => {
-    if (!isPending) {
-      setIsCheckingSession(false);
-      if (session?.user) {
-        router.push('/equipos');
-      }
-    }
-  }, [session, isPending, router]);
+  if (!isPending && session?.user) {
+    router.push('/equipos');
+  }
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsBgLoaded(true);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
+  const isCheckingSession = isPending;
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -58,10 +46,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-end md:items-center justify-start bg-slate-950 text-white font-sans antialiased relative overflow-hidden px-6 py-12 md:p-20">
-      <div className={`absolute inset-0 bg-cover bg-center bg-no-repeat bg-[url('/fondo_mobile.webp')] md:bg-[url('/fondo_web.webp')] transition-opacity duration-1000 ease-out animate-slow-pan ${isBgLoaded ? 'opacity-100' : 'opacity-0'}`}></div>
-      
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/20 md:bg-black/40"></div>
-
       <div className="w-full max-w-md z-10 space-y-8 md:space-y-10">
         <div className="space-y-4 text-left">
           <h1 className={`${archivoFont.className} text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.1]`}>

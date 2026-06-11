@@ -37,6 +37,28 @@ export async function GET(
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  const { data: athlete, error: athleteError } = await supabase
+    .from('athletes')
+    .select('role, payment_receipt_url, apto_medico_url, documento_url, avatar_url')
+    .eq('user_id', session.user.id)
+    .maybeSingle();
+
+  if (athleteError || !athlete) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const isAdmin = athlete.role === 'admin';
+  const ownedFiles = [
+    athlete.payment_receipt_url,
+    athlete.apto_medico_url,
+    athlete.documento_url,
+    athlete.avatar_url,
+  ].filter(Boolean);
+
+  if (!isAdmin && !ownedFiles.includes(filename)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const { data, error } = await supabase.storage
     .from(bucket)
     .download(filename);
@@ -49,12 +71,13 @@ export async function GET(
   const contentType = filename.endsWith('.pdf') ? 'application/pdf' :
                      filename.endsWith('.png') ? 'image/png' :
                      filename.endsWith('.jpg') || filename.endsWith('.jpeg') ? 'image/jpeg' :
+                     filename.endsWith('.webp') ? 'image/webp' :
                      'application/octet-stream';
 
   return new NextResponse(data, {
     headers: {
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'private, max-age=3600',
     },
   });
 }
