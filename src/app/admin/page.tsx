@@ -32,6 +32,7 @@ import {
   Stethoscope,
   History,
   Settings,
+  LayoutDashboard,
 } from "lucide-react"
 
 export default function AdminPage() {
@@ -40,7 +41,7 @@ export default function AdminPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [team, setTeam] = useState<Team | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
-  const [activeTab, setActiveTab] = useState<"equipo" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("equipo")
+  const [activeTab, setActiveTab] = useState<"general" | "equipo" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("general")
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
   const [modalType, setModalType] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
@@ -353,6 +354,7 @@ export default function AdminPage() {
           {/* Sidebar Menu */}
           <aside className="w-full md:w-64 shrink-0 bg-card border border-border rounded-2xl p-4 space-y-1">
             {[
+              { id: "general", label: "Panel General", count: 0, icon: LayoutDashboard },
               { id: "equipo", label: "Mi Equipo", count: 0, icon: Settings },
               { id: "solicitudes", label: "Solicitudes", count: pendingSolicitudes.length, icon: UserPlus },
               { id: "atletas", label: "Atletas", count: activeMembers.length, icon: Users },
@@ -392,8 +394,16 @@ export default function AdminPage() {
           {/* Contenido Principal */}
           <div className="flex-1 min-w-0 w-full">
 
-        {/* Equipo Tab */}
-        {activeTab === "equipo" && team && (
+          {/* Panel General Tab */}
+          {activeTab === "general" && (
+            <div className="bg-card rounded-xl p-6 border border-border">
+              <h2 className="text-xl font-semibold text-foreground mb-4">Panel General</h2>
+              <p className="text-muted-foreground text-sm">Contenido próximamente.</p>
+            </div>
+          )}
+
+          {/* Equipo Tab */}
+          {activeTab === "equipo" && team && (
           <div className="bg-card rounded-xl p-6 border border-border">
             <h2 className="text-xl font-semibold text-foreground mb-6">{team.name}</h2>
             <div className="space-y-4">
