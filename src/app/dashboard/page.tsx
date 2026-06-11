@@ -257,7 +257,7 @@ export default function AthleteDashboard() {
   })();
 
   return (
-    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(30,78,109,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
+    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(153,0,0,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
       <HeaderAlert user={user} />
       <Navbar />
 
@@ -333,7 +333,7 @@ export default function AthleteDashboard() {
                         {team.name}
                       </h1>
                       <p className="text-sm text-slate-500 font-medium">
-                        Entrenador: <strong className="text-[#1e4e6d]">{team.coach}</strong>
+                        Entrenador: <strong className="text-[#990000]">{team.coach}</strong>
                       </p>
                     </div>
                   </div>
@@ -386,7 +386,7 @@ export default function AthleteDashboard() {
                     {/* ENTRENAMIENTOS DIARIOS */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
                       {/* Header con acento */}
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 sm:px-8 py-5 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 sm:px-8 py-5 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Dumbbell className="w-5 h-5 text-white" />
@@ -530,7 +530,7 @@ export default function AthleteDashboard() {
                   <div className="space-y-6">
                     {/* FONDO DEL FIN DE SEMANA */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Sun className="w-4.5 h-4.5 text-white" />
@@ -560,7 +560,7 @@ export default function AthleteDashboard() {
 
                     {/* UBICACIÓN */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Navigation className="w-4.5 h-4.5 text-white" />
@@ -597,7 +597,7 @@ export default function AthleteDashboard() {
                             href={team.google_maps_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full py-2.5 bg-[#1e4e6d] hover:bg-[#2a6f97] text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
+                            className="w-full py-2.5 bg-[#990000] hover:bg-[#fe0000] text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             Ver en Google Maps
@@ -619,7 +619,7 @@ export default function AthleteDashboard() {
                     {/* PLAN DE SUSCRIPCIÓN Y PAGO */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
                       {/* Header con acento */}
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 sm:px-8 py-5 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 sm:px-8 py-5 rounded-t-[32px]">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -664,10 +664,10 @@ export default function AthleteDashboard() {
                               </div>
                             </div>
                           </div>
-                          <div className="sm:w-36 bg-gradient-to-br from-[#1e4e6d] to-[#2a6f97] rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-blue-200 block mb-1">Cuota</span>
+                          <div className="sm:w-36 bg-gradient-to-br from-[#990000] to-[#fe0000] rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-red-200 block mb-1">Cuota</span>
                             <p className="text-white font-black text-2xl leading-none">$17.000</p>
-                            <span className="text-blue-200 text-[10px] font-medium mt-1">/ mes</span>
+                            <span className="text-red-200 text-[10px] font-medium mt-1">/ mes</span>
                           </div>
                         </div>
 
@@ -731,12 +731,12 @@ export default function AthleteDashboard() {
                                   setReceiptFile(e.target.files?.[0] || null);
                                   setUploadError('');
                                 }}
-                                className="w-full bg-slate-50 border border-slate-200 focus:border-[#1e4e6d] focus:ring-1 focus:ring-[#1e4e6d]/20 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none transition-all file:mr-2 file:py-0.5 file:px-2.5 file:rounded-full file:border-0 file:text-[9px] file:font-bold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300"
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[#990000] focus:ring-1 focus:ring-[#990000]/20 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none transition-all file:mr-2 file:py-0.5 file:px-2.5 file:rounded-full file:border-0 file:text-[9px] file:font-bold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300"
                               />
                               <button
                                 type="submit"
                                 disabled={!receiptFile || uploadingReceipt}
-                                className="sm:w-52 py-2.5 bg-[#1e4e6d] hover:bg-[#2a6f97] text-white font-bold text-xs rounded-xl shadow-md shadow-[#1e4e6d]/10 hover:shadow-[#1e4e6d]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+                                className="sm:w-52 py-2.5 bg-[#990000] hover:bg-[#fe0000] text-white font-bold text-xs rounded-xl shadow-md shadow-[#990000]/10 hover:shadow-[#990000]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
                               >
                                 <Upload className="w-3.5 h-3.5" />
                                 {uploadingReceipt ? 'Enviando...' : 'Enviar Comprobante'}
@@ -750,7 +750,7 @@ export default function AthleteDashboard() {
 
                     {/* APTO FÍSICO */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 sm:px-8 py-5 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 sm:px-8 py-5 rounded-t-[32px]">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -852,7 +852,7 @@ export default function AthleteDashboard() {
 
                     {/* CONTACTO ENTRENADOR */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <MessageCircle className="w-4.5 h-4.5 text-white" />
@@ -892,7 +892,7 @@ export default function AthleteDashboard() {
 
                     {/* CUMPLEAÑOS DE LA SEMANA */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
+                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <Cake className="w-4.5 h-4.5 text-white" />

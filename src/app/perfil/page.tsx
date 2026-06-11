@@ -412,7 +412,7 @@ export default function PerfilPage() {
   const sectionDatosPersonales = (
     <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm text-left space-y-5">
       <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2`}>
-        <User className="w-5 h-5 text-[#1e4e6d]" />
+        <User className="w-5 h-5 text-[#990000]" />
         Datos Personales
       </h3>
       
@@ -524,7 +524,7 @@ export default function PerfilPage() {
             <StatusBadge status={user.documento_status} variant="document" className="px-3 py-1 text-[11px]" />
           </div>
           {user.documento_url && (
-            <a href={`/api/storage/receipts?filename=${user.documento_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
+            <a href={`/api/storage/receipts?filename=${user.documento_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#990000] hover:underline">
               Ver Documento
             </a>
           )}
@@ -537,7 +537,7 @@ export default function PerfilPage() {
             <StatusBadge status={user.apto_medico_status} variant="document" className="px-3 py-1 text-[11px]" />
           </div>
           {user.apto_medico_url && (
-            <a href={`/api/storage/medical-certs?filename=${user.apto_medico_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#1e4e6d] hover:underline">
+            <a href={`/api/storage/medical-certs?filename=${user.apto_medico_url}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#990000] hover:underline">
               Ver Apto Médico
             </a>
           )}
@@ -617,7 +617,7 @@ export default function PerfilPage() {
 
         {/* USER INFO CARD */}
         <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm mb-6 flex flex-col sm:flex-row items-center gap-6 p-6 sm:p-8 text-left relative">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent rounded-bl-full pointer-events-none" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-50 to-transparent rounded-bl-full pointer-events-none" />
           <div className="relative group flex-shrink-0">
             {getAvatarSrc(user.avatar_url) ? (
               <Image 
@@ -628,7 +628,7 @@ export default function PerfilPage() {
                 className="rounded-2xl object-cover shadow-md"
               />
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#1e4e6d] to-blue-500 flex items-center justify-center text-white font-black text-3xl shadow-md">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#990000] to-red-500 flex items-center justify-center text-white font-black text-3xl shadow-md">
                 {user.name ? user.name[0].toUpperCase() : 'U'}
               </div>
             )}
@@ -673,11 +673,11 @@ export default function PerfilPage() {
                 <div className="mt-2.5 w-full min-w-[200px] sm:min-w-[240px]">
                   <div className="flex justify-between items-center mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     <span>Completado del Perfil</span>
-                    <span className="text-[#1e4e6d] font-black">{completion}%</span>
+                    <span className="text-[#990000] font-black">{completion}%</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200/50">
                     <div 
-                      className="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-500 ease-out"
+                      className="bg-gradient-to-r from-red-500 to-emerald-500 h-full rounded-full transition-all duration-500 ease-out"
                       style={{ width: `${completion}%` }}
                     />
                   </div>
@@ -716,7 +716,7 @@ export default function PerfilPage() {
                   {/* DATOS PERSONALES */}
                   <div className="space-y-5">
                     <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100 flex items-center gap-2 text-left`}>
-                      <User className="w-5 h-5 text-[#1e4e6d]" />
+                      <User className="w-5 h-5 text-[#990000]" />
                       Datos Personales
                     </h3>
 
@@ -926,7 +926,7 @@ export default function PerfilPage() {
                     <button
                       type="submit"
                       disabled={isSaving}
-                      className="w-full py-4 bg-[#1e4e6d] hover:bg-[#153850] text-white font-bold text-sm rounded-full shadow-lg shadow-[#1e4e6d]/10 hover:shadow-[#1e4e6d]/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-4 bg-[#990000] hover:bg-[#660000] text-white font-bold text-sm rounded-full shadow-lg shadow-[#990000]/10 hover:shadow-[#990000]/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Save className="w-4 h-4" />
                       {isSaving ? 'Guardando...' : 'Guardar Datos del Perfil'}
@@ -970,7 +970,7 @@ export default function PerfilPage() {
                     </div>
                     
                     <div className="space-y-2 w-full max-w-[220px] pt-2">
-                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-[#1e4e6d] hover:text-[#153850] rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-[#990000] hover:text-[#660000] rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
                         <Upload className="w-3.5 h-3.5" />
                         {uploading ? 'Subiendo...' : 'Seleccionar Archivo'}
                         <input
@@ -1012,7 +1012,7 @@ export default function PerfilPage() {
                     </div>
                     
                     <div className="space-y-2 w-full max-w-[220px] pt-2">
-                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-[#1e4e6d] hover:text-[#153850] rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                      <label className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-[#990000] hover:text-[#660000] rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
                         <Upload className="w-3.5 h-3.5" />
                         {uploading ? 'Subiendo...' : 'Seleccionar Archivo'}
                         <input
@@ -1064,7 +1064,7 @@ export default function PerfilPage() {
                 setShowOnboardingPopup(false);
                 setPopupDismissed(true);
               }}
-              className="w-full py-3 bg-[#1e4e6d] hover:bg-[#153850] text-white font-bold text-sm rounded-full transition-all cursor-pointer shadow-md"
+              className="w-full py-3 bg-[#990000] hover:bg-[#660000] text-white font-bold text-sm rounded-full transition-all cursor-pointer shadow-md"
             >
               Completar Perfil
             </button>

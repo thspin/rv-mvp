@@ -157,7 +157,7 @@ export default function EquiposPage() {
         {/* HEADER */}
         <div className="relative mb-12 text-left">
           {/* Decorative blur blobs */}
-          <div className="absolute -left-10 -top-10 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-10 -top-10 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute left-40 -top-20 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
           
           <div className="space-y-4">
@@ -168,7 +168,7 @@ export default function EquiposPage() {
               Busca tu equipo para entrenar.
             </p>
           </div>
-          <div className="h-[2px] w-20 bg-gradient-to-r from-[#1e4e6d] to-transparent mt-6 rounded-full" />
+          <div className="h-[2px] w-20 bg-gradient-to-r from-[#990000] to-transparent mt-6 rounded-full" />
         </div>
         {/* TEAMS GRID */}
         {filteredTeams.length === 0 ? (
@@ -199,7 +199,7 @@ export default function EquiposPage() {
                     }
                   }}
                   className={`bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative cursor-pointer ${
-                    isActive ? 'hover:border-emerald-300' : isUserTeam ? 'hover:border-amber-300' : 'hover:border-blue-300'
+                    isActive ? 'hover:border-emerald-300' : isUserTeam ? 'hover:border-amber-300' : 'hover:border-red-300'
                   }`}
                 >
                   {/* Top Cover Image (Centered Logo on Black Background) */}
@@ -232,7 +232,7 @@ export default function EquiposPage() {
                         {team.name}
                       </h3>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-semibold">
-                        <span className="text-[#1e4e6d] font-bold">
+                        <span className="text-[#990000] font-bold">
                           De {coachName}
                         </span>
                         {team.location && (
@@ -341,7 +341,7 @@ export default function EquiposPage() {
                   {activeTeamDetails.name}
                 </h2>
                 <div className="flex items-center gap-2 text-xs font-semibold">
-                  <span className="text-[#1e4e6d] font-bold">De {coachName}</span>
+                  <span className="text-[#990000] font-bold">De {coachName}</span>
                   <span className="text-slate-300">•</span>
                   <span className="text-slate-400 font-medium">Director Técnico y Coach</span>
                 </div>
@@ -365,7 +365,7 @@ export default function EquiposPage() {
               {/* White bottom card containing stats */}
               <div className="bg-white rounded-[24px] p-4 shadow-sm border border-slate-200/30 flex items-center justify-between text-center">
                 <div className="flex-1">
-                  <div className="flex justify-center text-[#1e4e6d] mb-1">
+                  <div className="flex justify-center text-[#990000] mb-1">
                     <Clock className="w-4.5 h-4.5" />
                   </div>
                   <p className="text-sm font-bold text-slate-800">{getExperienceYears(activeTeamDetails.founded_date)} Años</p>
@@ -373,7 +373,7 @@ export default function EquiposPage() {
                 </div>
                 <div className="h-8 w-[1px] bg-slate-100" />
                 <div className="flex-1">
-                  <div className="flex justify-center text-[#1e4e6d] mb-1">
+                  <div className="flex justify-center text-[#990000] mb-1">
                     <Users className="w-4.5 h-4.5" />
                   </div>
                   <p className="text-sm font-bold text-slate-800">{athleteCount}</p>
@@ -384,7 +384,7 @@ export default function EquiposPage() {
               {/* Sports list section */}
               <div className="bg-white/40 rounded-[20px] p-4 border border-white/45 space-y-2 text-left">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-                  <Activity className="w-4 h-4 text-[#1e4e6d]" />
+                  <Activity className="w-4 h-4 text-[#990000]" />
                   Especialidades del Equipo
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
@@ -412,7 +412,7 @@ export default function EquiposPage() {
                         key={sportName} 
                         className="bg-white hover:bg-slate-50 text-slate-800 px-3 py-2 rounded-xl text-[11px] font-bold shadow-sm border border-slate-200/40 flex items-center gap-2 transition-all"
                       >
-                        <SportIcon className="w-4.5 h-4.5 text-[#1e4e6d] flex-shrink-0" />
+                        <SportIcon className="w-4.5 h-4.5 text-[#990000] flex-shrink-0" />
                         <span>{sportName}</span>
                       </div>
                     );
