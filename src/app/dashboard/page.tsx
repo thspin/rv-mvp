@@ -314,7 +314,7 @@ export default function AthleteDashboard() {
         ) : team && (
             <div className="space-y-6 text-left">
               {/* HEADER DE BIENVENIDA AL EQUIPO */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative overflow-hidden">
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                     <div className="w-20 h-20 rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center p-1.5 border border-slate-200 shadow-sm flex-shrink-0">
@@ -351,7 +351,6 @@ export default function AthleteDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 self-start md:self-auto">
-                    <NotificationBell />
                     {user.role === 'admin' && (
                       <button
                         onClick={() => router.push('/admin')}
@@ -361,6 +360,7 @@ export default function AthleteDashboard() {
                         Panel Administrador
                       </button>
                     )}
+                    <NotificationBell />
                   </div>
                 </div>
                 {/* TABS DE NAVEGACIÓN PRINCIPAL */}

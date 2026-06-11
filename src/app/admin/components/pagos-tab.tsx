@@ -257,8 +257,8 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                 </div>
               </div>
             ) : (
-              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-950 dark:text-amber-100 font-semibold leading-relaxed shadow-sm">
-                <strong className="text-amber-800 dark:text-amber-400 block mb-0.5 font-bold">Condonación de cuota:</strong>
+              <div className="p-3.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 font-semibold leading-relaxed shadow-sm">
+                <strong className="text-zinc-950 dark:text-white block mb-0.5 font-bold">Condonación de cuota:</strong>
                 Se registrará la deuda de este mes como condonada ($0) y el atleta quedará al día de forma inmediata sin generar mora.
               </div>
             )}
