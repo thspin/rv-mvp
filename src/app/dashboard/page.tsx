@@ -337,6 +337,15 @@ export default function AthleteDashboard() {
                       </p>
                     </div>
                   </div>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={() => router.push('/admin')}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#990000] hover:bg-[#660000] text-white rounded-full font-bold text-xs uppercase tracking-wider transition-all duration-150 shadow-md shadow-[#990000]/10 hover:shadow-[#990000]/20 cursor-pointer self-start md:self-auto"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Panel Administrador
+                    </button>
+                  )}
                 </div>
                 {/* TABS DE NAVEGACIÓN PRINCIPAL */}
                 <div className="flex border-b border-slate-200 gap-1 pb-px">
