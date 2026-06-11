@@ -17,8 +17,6 @@ import {
   Team,
   Payment,
 } from "@/lib/db"
-import type { TrainingShift, ShiftInstructions } from "@/lib/db-types"
-import { parseTrainingDays, parseInstructions } from "@/lib/db-types"
 import { useAuthGuard } from "@/hooks/useAuthGuard"
 import { SolicitudesTab } from "./components/solicitudes-tab"
 import { AtletasTab } from "./components/atletas-tab"
@@ -183,126 +181,6 @@ export default function AdminPage() {
     await loadData()
   }
 
-  const parsedShifts = parseTrainingDays(teamForm.training_days);
-  const parsedInstructions = parseInstructions(teamForm.instructions);
-
-  const handleConvertToStructured = () => {
-    const defaultShifts: TrainingShift[] = [
-      { id: 'turno-siesta', name: 'Turno Siesta', days: 'Lunes a Jueves', time: '14:30 hs', location: 'Parque de la Ciudad (Lugar A)' },
-      { id: 'turno-tarde-1', name: 'Turno Tarde/Noche - 1º Turno', days: 'Lunes a Jueves', time: '19:30 hs', location: 'Pista de Atletismo (Lugar B)' },
-      { id: 'turno-tarde-2', name: 'Turno Tarde/Noche - 2º Turno', days: 'Lunes a Jueves', time: '20:30 hs', location: 'Pista de Atletismo (Lugar B)' }
-    ];
-    const defaultInstructions: ShiftInstructions = {
-      general: 'Traer mochila de hidratación y ropa cómoda para todas las sesiones.',
-      shifts: {
-        'turno-siesta': 'Haremos pasadas de ritmo aeróbico en el circuito de Parque. Traer gorra y protector solar.',
-        'turno-tarde-1': 'Pasadas de velocidad: 10x400m en la pista. Traer linterna frontal obligatoria.',
-        'turno-tarde-2': 'Pasadas de velocidad: 8x400m en la pista. Traer linterna frontal obligatoria.'
-      }
-    };
-    setTeamForm({
-      ...teamForm,
-      training_days: JSON.stringify(defaultShifts),
-      instructions: JSON.stringify(defaultInstructions)
-    });
-  };
-
-  const handleUpdateShift = (index: number, updatedFields: Partial<TrainingShift>) => {
-    if (!parsedShifts) return;
-    const newShifts = [...parsedShifts];
-    const oldId = newShifts[index].id;
-    newShifts[index] = { ...newShifts[index], ...updatedFields } as TrainingShift;
-    
-    // Si cambia el id del turno, actualizar también las instrucciones correspondientes
-    if (updatedFields.id && oldId !== updatedFields.id) {
-      const newId = updatedFields.id;
-      const currentInst = parsedInstructions || { shifts: {} };
-      const newShiftsInst = { ...currentInst.shifts };
-      if (oldId in newShiftsInst) {
-        newShiftsInst[newId] = newShiftsInst[oldId];
-        delete newShiftsInst[oldId];
-      }
-      setTeamForm({
-        ...teamForm,
-        training_days: JSON.stringify(newShifts),
-        instructions: JSON.stringify({
-          ...currentInst,
-          shifts: newShiftsInst
-        })
-      });
-      return;
-    }
-    
-    setTeamForm({
-      ...teamForm,
-      training_days: JSON.stringify(newShifts)
-    });
-  };
-
-  const handleAddShift = () => {
-    const newShifts = parsedShifts ? [...parsedShifts] : [];
-    const newId = `turno-${crypto.randomUUID().slice(0, 8)}`;
-    newShifts.push({
-      id: newId,
-      name: 'Nuevo Turno',
-      days: 'Lunes a Jueves',
-      time: '19:00 hs',
-      location: teamForm.location || 'Sede Principal'
-    });
-    
-    const currentInst = parsedInstructions || { shifts: {} };
-    const newShiftsInst = { ...currentInst.shifts, [newId]: '' };
-    setTeamForm({
-      ...teamForm,
-      training_days: JSON.stringify(newShifts),
-      instructions: JSON.stringify({
-        ...currentInst,
-        shifts: newShiftsInst
-      })
-    });
-  };
-
-  const handleRemoveShift = (index: number) => {
-    if (!parsedShifts) return;
-    const shiftToRemove = parsedShifts[index];
-    const newShifts = parsedShifts.filter((_, i) => i !== index);
-    
-    const currentInst = parsedInstructions || { shifts: {} };
-    const newShiftsInst = { ...currentInst.shifts };
-    delete newShiftsInst[shiftToRemove.id];
-    
-    setTeamForm({
-      ...teamForm,
-      training_days: JSON.stringify(newShifts),
-      instructions: JSON.stringify({
-        ...currentInst,
-        shifts: newShiftsInst
-      })
-    });
-  };
-
-  const handleUpdateShiftInstruction = (shiftId: string, text: string) => {
-    const currentInst = parsedInstructions || { shifts: {} };
-    const newShiftsInst = { ...currentInst.shifts, [shiftId]: text };
-    setTeamForm({
-      ...teamForm,
-      instructions: JSON.stringify({
-        ...currentInst,
-        shifts: newShiftsInst
-      })
-    });
-  };
-
-  const handleUpdateGeneralInstruction = (text: string) => {
-    const currentInst = parsedInstructions || { shifts: {} };
-    setTeamForm({
-      ...teamForm,
-      instructions: JSON.stringify({
-        ...currentInst,
-        general: text
-      })
-    });
-  };
 
   async function handleSaveTeam() {
     if (!team) return
@@ -418,17 +296,17 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Logo URL</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Coach / Entrenador</label>
                   <input
                     type="text"
-                    value={teamForm.logo_url}
-                    onChange={(e) => setTeamForm({ ...teamForm, logo_url: e.target.value })}
+                    value={teamForm.coach}
+                    onChange={(e) => setTeamForm({ ...teamForm, coach: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Descripcion</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Descripción</label>
                 <textarea
                   value={teamForm.description}
                   onChange={(e) => setTeamForm({ ...teamForm, description: e.target.value })}
@@ -438,16 +316,7 @@ export default function AdminPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Coach</label>
-                  <input
-                    type="text"
-                    value={teamForm.coach}
-                    onChange={(e) => setTeamForm({ ...teamForm, coach: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Ubicacion</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Ubicación</label>
                   <input
                     type="text"
                     value={teamForm.location}
@@ -455,109 +324,15 @@ export default function AdminPage() {
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
-              </div>
-              <div className="border border-border rounded-xl p-4 bg-muted/40 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-bold text-foreground">Días y Horarios de Entrenamiento (Turnos)</label>
-                  {parsedShifts ? (
-                    <button
-                      type="button"
-                      onClick={handleAddShift}
-                      className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
-                    >
-                      + Agregar Turno
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleConvertToStructured}
-                      className="px-3 py-1 bg-amber-650 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                    >
-                      Estandarizar a Turnos Estructurados
-                    </button>
-                  )}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Fecha de creación del team</label>
+                  <input
+                    type="date"
+                    value={teamForm.founded_date}
+                    onChange={(e) => setTeamForm({ ...teamForm, founded_date: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                 </div>
-
-                {parsedShifts ? (
-                  <div className="space-y-4">
-                    {parsedShifts.map((shift, idx) => (
-                      <div key={shift.id || idx} className="bg-card p-4 rounded-xl border border-border space-y-3 relative text-left">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveShift(idx)}
-                          className="absolute top-2 right-2 text-destructive hover:text-destructive/80 text-xs font-semibold cursor-pointer"
-                        >
-                          Eliminar
-                        </button>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">Nombre del Turno</label>
-                            <input
-                              type="text"
-                              value={shift.name}
-                              onChange={(e) => handleUpdateShift(idx, { name: e.target.value })}
-                              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                              placeholder="Ej: Turno Siesta"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">Días</label>
-                            <input
-                              type="text"
-                              value={shift.days}
-                              onChange={(e) => handleUpdateShift(idx, { days: e.target.value })}
-                              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                              placeholder="Ej: Lunes a Jueves"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">Horario</label>
-                            <input
-                              type="text"
-                              value={shift.time}
-                              onChange={(e) => handleUpdateShift(idx, { time: e.target.value })}
-                              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                              placeholder="Ej: 14:30 hs"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">Lugar / Sede</label>
-                            <input
-                              type="text"
-                              value={shift.location}
-                              onChange={(e) => handleUpdateShift(idx, { location: e.target.value })}
-                              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                              placeholder="Ej: Sede Principal"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      type="text"
-                      value={teamForm.training_days}
-                      onChange={(e) => setTeamForm({ ...teamForm, training_days: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Ej: Lunes y Miércoles 19:00 hs"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Actualmente se muestra como texto libre. Hacé clic en el botón de arriba para estructurarlo de manera estandarizada y clara.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Fecha de creación del team</label>
-                <input
-                  type="date"
-                  value={teamForm.founded_date}
-                  onChange={(e) => setTeamForm({ ...teamForm, founded_date: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
               </div>
 
               <div>
@@ -584,68 +359,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="border border-border rounded-xl p-4 bg-muted/40 space-y-4">
-                <label className="block text-sm font-bold text-foreground">Instrucciones y Planificación Diaria</label>
-                
-                {parsedShifts ? (
-                  <div className="space-y-4">
-                    <div className="text-left">
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1">Avisos Generales (aplica a todos los turnos)</label>
-                      <textarea
-                        value={parsedInstructions?.general || ""}
-                        onChange={(e) => handleUpdateGeneralInstruction(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
-                        rows={2}
-                        placeholder="Ej: Traer hidratación para todas las sesiones. Avisos de cuota, etc."
-                      />
-                    </div>
-                    {parsedShifts.map((shift) => (
-                      <div key={shift.id} className="space-y-1 text-left">
-                        <label className="block text-xs font-semibold text-foreground">
-                          Rutina Diaria para <span className="text-primary font-bold">{shift.name}</span> <span className="text-muted-foreground font-normal">({shift.time} - {shift.location})</span>
-                        </label>
-                        <textarea
-                          value={parsedInstructions?.shifts[shift.id] || ""}
-                          onChange={(e) => handleUpdateShiftInstruction(shift.id, e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono"
-                          rows={3}
-                          placeholder={`Escribe la rutina específica para el ${shift.name}...`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-left">
-                    <textarea
-                      value={teamForm.instructions}
-                      onChange={(e) => setTeamForm({ ...teamForm, instructions: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      rows={3}
-                      placeholder="Escribe las instrucciones generales aquí..."
-                    />
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Entrenamientos Especiales (Fondos de fines de semana)</label>
-                <textarea
-                  value={teamForm.special_instructions}
-                  onChange={(e) => setTeamForm({ ...teamForm, special_instructions: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                  placeholder="Instrucciones para fondos especiales del fin de semana..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Google Maps (URL o iframe de compartir)</label>
-                <input
-                  type="text"
-                  value={teamForm.google_maps_url}
-                  onChange={(e) => setTeamForm({ ...teamForm, google_maps_url: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="https://www.google.com/maps/embed?... o link directo"
-                />
-              </div>
               <button
                 onClick={handleSaveTeam}
                 className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
