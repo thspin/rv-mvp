@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Navbar from "@/components/Navbar"
-import NotificationBell from "@/components/NotificationBell"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { 
   getAllAthletes, 
@@ -241,7 +240,6 @@ export default function AdminPage() {
             <p className="text-muted-foreground text-sm">{team?.name}</p>
           </div>
           <div className="flex items-center gap-3 self-start sm:self-center">
-            <NotificationBell />
             <button
               onClick={() => router.push("/dashboard")}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer"
