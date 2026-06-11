@@ -24,7 +24,18 @@ import {
   Upload,
   ExternalLink,
   MapPin,
-  Clock
+  Clock,
+  Dumbbell,
+  Calendar,
+  MessageCircle,
+  Cake,
+  ChevronRight,
+  Shield,
+  CreditCard,
+  Stethoscope,
+  Navigation,
+  Zap,
+  Sun,
 } from 'lucide-react';
 import { Archivo } from 'next/font/google';
 import { LoadingScreen } from '@/components/ui/loading-screen';
@@ -369,28 +380,41 @@ export default function AthleteDashboard() {
               ) : activeDashboardTab === 'entrenamientos' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-                  {/* COLUMNA IZQUIERDA (2/3) */}
+                  {/* COLUMNA IZQUIERDA – PLANIFICACIÓN (2/3) */}
                   <div className="lg:col-span-2 space-y-6">
 
                     {/* ENTRENAMIENTOS DIARIOS */}
-                    <SectionCard spaceY="space-y-5">
-                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <FileText className="w-5 h-5 text-emerald-600" />
-                        Entrenamientos Diarios
-                      </h3>
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      {/* Header con acento */}
+                      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 sm:px-8 py-5 rounded-t-[32px]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <Dumbbell className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className={`${archivoFont.className} text-base sm:text-lg font-black text-white uppercase tracking-tight leading-none`}>
+                              Planificación Diaria
+                            </h3>
+                            <p className="text-emerald-100 text-[11px] font-semibold mt-0.5">
+                              {parsedShifts ? `${parsedShifts.length} turno${parsedShifts.length > 1 ? 's' : ''} disponible${parsedShifts.length > 1 ? 's' : ''}` : 'Sin turnos configurados'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
 
-                      {parsedShifts ? (
-                        <div className="space-y-6">
-                          {/* Tabs internas de turnos */}
-                            <div className="flex flex-wrap gap-1.5 border-b border-slate-100 pb-3">
+                      <div className="px-6 sm:px-8 py-6 space-y-5">
+                        {parsedShifts ? (
+                          <div className="space-y-5">
+                            {/* Tabs internas de turnos — estilo pill */}
+                            <div className="flex flex-wrap gap-2 p-1 bg-slate-100/80 rounded-2xl">
                               {parsedShifts.map((shift) => (
                                 <button
                                   key={shift.id}
                                   onClick={() => setActiveShiftId(shift.id)}
-                                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                                  className={`flex-1 min-w-0 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                                     activeShiftId === shift.id
-                                      ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
-                                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                      ? 'bg-white text-slate-900 shadow-sm shadow-slate-200/60 ring-1 ring-slate-200/50'
+                                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                                   }`}
                                 >
                                   {shift.name}
@@ -398,103 +422,166 @@ export default function AthleteDashboard() {
                               ))}
                             </div>
 
+                            {/* Aviso general */}
                             {parsedInstructions?.general && (
-                              <div className="flex gap-3 bg-blue-50 border border-blue-150 p-4 rounded-2xl text-blue-900 text-xs font-semibold leading-relaxed">
-                                <span className="text-blue-600 flex-shrink-0 font-bold uppercase tracking-wider text-[9px] bg-blue-100 px-2.5 py-0.5 rounded-full h-fit mt-0.5">
-                                  Aviso General
-                                </span>
-                                <p className="whitespace-pre-line text-left">{parsedInstructions.general}</p>
+                              <div className="flex items-start gap-3 bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-100 p-4 rounded-2xl">
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <Zap className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="space-y-1 min-w-0">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 block">
+                                    Aviso General
+                                  </span>
+                                  <p className="text-xs font-medium text-blue-900 whitespace-pre-line leading-relaxed">{parsedInstructions.general}</p>
+                                </div>
                               </div>
                             )}
 
-                            <div className="grid grid-cols-1 gap-4">
-                              {parsedShifts
-                                .filter((shift) => shift.id === activeShiftId)
-                                .map((shift) => {
-                                  const routine = parsedInstructions?.shifts[shift.id];
-                                  return (
-                                    <div key={shift.id} className="border border-slate-150 rounded-2xl p-5 bg-slate-50 space-y-4 text-left">
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-slate-200/60">
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                                          <Clock className="w-4 h-4 text-blue-500" />
-                                          <span>Horario: {shift.time} ({shift.days})</span>
+                            {/* Contenido del turno activo */}
+                            {parsedShifts
+                              .filter((shift) => shift.id === activeShiftId)
+                              .map((shift) => {
+                                const routine = parsedInstructions?.shifts[shift.id];
+                                return (
+                                  <div key={shift.id} className="space-y-4 text-left">
+                                    {/* Info del turno — badges */}
+                                    <div className="flex flex-wrap gap-2.5">
+                                      <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-3.5 py-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                                          <MapPin className="w-4 h-4 text-red-500" />
-                                          <span className="truncate">Lugar: {shift.location}</span>
+                                        <div className="text-left">
+                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block leading-none">Días</span>
+                                          <span className="text-xs font-bold text-slate-800 leading-tight">{shift.days}</span>
                                         </div>
                                       </div>
+                                      <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-3.5 py-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                                          <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                                        </div>
+                                        <div className="text-left">
+                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block leading-none">Horario</span>
+                                          <span className="text-xs font-bold text-slate-800 leading-tight">{shift.time}</span>
+                                        </div>
+                                      </div>
+                                      <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-3.5 py-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
+                                          <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                                        </div>
+                                        <div className="text-left">
+                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block leading-none">Lugar</span>
+                                          <span className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[140px] block">{shift.location}</span>
+                                        </div>
+                                      </div>
+                                    </div>
 
-                                      <div className="space-y-2">
-                                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                                          Planificación / Rutina
+                                    {/* Rutina / Planificación */}
+                                    <div className="border border-slate-150 rounded-2xl overflow-hidden">
+                                      <div className="bg-slate-50 px-5 py-3 border-b border-slate-150 flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-slate-400" />
+                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                                          Planificación del Turno
                                         </span>
+                                      </div>
+                                      <div className="p-5 bg-white">
                                         {routine ? (
-                                          <p className="text-sm font-medium text-slate-700 whitespace-pre-line leading-relaxed pl-1">
+                                          <p className="text-sm font-medium text-slate-700 whitespace-pre-line leading-relaxed">
                                             {routine}
                                           </p>
                                         ) : (
-                                          <p className="text-xs text-slate-400 italic pl-1">
-                                            No se ha cargado una planificación específica para este turno hoy.
-                                          </p>
+                                          <div className="flex items-center gap-3 text-slate-400">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                              <FileText className="w-5 h-5 text-slate-300" />
+                                            </div>
+                                            <p className="text-sm italic">
+                                              No se ha cargado una planificación específica para este turno.
+                                            </p>
+                                          </div>
                                         )}
                                       </div>
                                     </div>
-                                  );
-                                })}
-                            </div>
+                                  </div>
+                                );
+                              })}
                           </div>
                         ) : (
-                          <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl text-slate-700 font-medium leading-relaxed">
+                          <div className="bg-slate-50 border border-slate-150 p-5 rounded-2xl text-slate-700 font-medium leading-relaxed">
                             {team.instructions ? (
                               <p className="text-sm whitespace-pre-line">
                                 {team.instructions}
                               </p>
                             ) : (
-                              <p className="text-sm text-slate-400 italic">
-                                El coordinador aún no ha publicado instrucciones específicas de entrenamiento.
-                              </p>
+                              <div className="flex items-center gap-3 text-slate-400">
+                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                  <Dumbbell className="w-5 h-5 text-slate-300" />
+                                </div>
+                                <p className="text-sm italic">
+                                  El coordinador aún no ha publicado instrucciones de entrenamiento.
+                                </p>
+                              </div>
                             )}
                           </div>
-                      )}
+                        )}
+                      </div>
                     </SectionCard>
                   </div>
 
                   {/* COLUMNA DERECHA (1/3) */}
                   <div className="space-y-6">
-                    {/* ENTRENAMIENTOS ESPECIALES (FONDOS DE FIN DE SEMANA) */}
-                    <SectionCard spaceY="space-y-5">
-                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <Clock className="w-5 h-5 text-blue-600" />
-                        Fondo del Fin de Semana
-                      </h3>
-
-                      <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl text-slate-700 font-medium leading-relaxed">
+                    {/* FONDO DEL FIN DE SEMANA */}
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-[32px]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <Sun className="w-4.5 h-4.5 text-white" />
+                          </div>
+                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
+                            Fondo del Finde
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="px-6 py-5">
                         {team.special_instructions ? (
-                          <p className="text-sm whitespace-pre-line">
+                          <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">
                             {team.special_instructions}
                           </p>
                         ) : (
-                          <p className="text-sm text-slate-400 italic">
-                            No hay entrenamientos especiales programados para este fin de semana.
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
+                              <Calendar className="w-4 h-4 text-amber-400" />
+                            </div>
+                            <p className="text-xs text-slate-400 italic leading-relaxed">
+                              No hay entrenamientos especiales programados para este fin de semana.
+                            </p>
+                          </div>
                         )}
                       </div>
                     </SectionCard>
 
-                    {/* UBICACIÓN DE ENTRENAMIENTOS (GOOGLE MAPS) */}
-                    <SectionCard spaceY="space-y-5">
-                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <MapPin className="w-5 h-5 text-red-500" />
-                        Ubicación
-                      </h3>
-
-                      <p className="text-sm text-slate-650 font-medium">
-                        Entrenamos en: <strong className="text-slate-900">{team.location}</strong>
-                      </p>
+                    {/* UBICACIÓN */}
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 py-4 rounded-t-[32px]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <Navigation className="w-4.5 h-4.5 text-white" />
+                          </div>
+                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
+                            Ubicación
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="px-6 py-5 space-y-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                            <MapPin className="w-3.5 h-3.5 text-red-500" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-700 truncate">
+                            {team.location}
+                          </p>
+                        </div>
 
                         {getEmbedUrl(team.google_maps_url) ? (
-                          <div className="w-full h-48 rounded-2xl overflow-hidden border border-slate-200 mt-2 shadow-sm">
+                          <div className="w-full h-44 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
                             <iframe
                               src={getEmbedUrl(team.google_maps_url)!}
                               width="100%"
@@ -510,14 +597,15 @@ export default function AthleteDashboard() {
                             href={team.google_maps_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all uppercase tracking-wider mt-2 cursor-pointer"
+                            className="w-full py-2.5 bg-[#1e4e6d] hover:bg-[#2a6f97] text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
                           >
-                            Ver en Google Maps
                             <ExternalLink className="w-3.5 h-3.5" />
+                            Ver en Google Maps
                           </a>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">No hay mapa configurado para este equipo.</p>
+                          <p className="text-xs text-slate-400 italic">No hay mapa configurado.</p>
                         )}
+                      </div>
                     </SectionCard>
                   </div>
 
@@ -527,192 +615,317 @@ export default function AthleteDashboard() {
 
                   {/* COLUMNA IZQUIERDA (2/3) */}
                   <div className="lg:col-span-2 space-y-6">
+
                     {/* PLAN DE SUSCRIPCIÓN Y PAGO */}
-                    <SectionCard spaceY="space-y-5">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
-                        <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2`}>
-                          <DollarSign className="w-5 h-5 text-[#1e4e6d]" />
-                          Plan de Suscripción y Pago
-                        </h3>
-                        <StatusBadge status={user.payment_status} variant="payment" />
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      {/* Header con acento */}
+                      <div className="bg-gradient-to-r from-[#1e4e6d] to-[#2a6f97] px-6 sm:px-8 py-5 rounded-t-[32px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                              <CreditCard className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className={`${archivoFont.className} text-base sm:text-lg font-black text-white uppercase tracking-tight leading-none`}>
+                                Suscripción y Pago
+                              </h3>
+                              <p className="text-blue-100 text-[11px] font-semibold mt-0.5">
+                                Cuota mensual del equipo
+                              </p>
+                            </div>
+                          </div>
+                          <StatusBadge status={user.payment_status} variant="payment" className="!text-[9px] !px-3 !py-1 !rounded-lg bg-white/15 !border-white/25 !text-white backdrop-blur-sm" />
+                        </div>
                       </div>
 
-                        {/* Bank Details Accent */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-150 p-4 rounded-2xl text-left text-xs">
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Datos de Transferencia</span>
-                            <p className="text-slate-700 font-medium leading-none">Banco Galicia • CBU:</p>
-                            <p className="text-slate-900 font-bold tracking-tight pb-1">0070012345678901234567</p>
-                            <p className="text-slate-700 font-medium">Alias: <strong className="text-slate-900 font-bold">rv.entrenamientos.mp</strong></p>
+                      <div className="px-6 sm:px-8 py-6 space-y-5">
+                        {/* Datos bancarios + Monto */}
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4">
+                          <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-3">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">Datos de Transferencia</span>
+                            <div className="space-y-1.5 text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                                  <DollarSign className="w-3 h-3 text-blue-600" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-slate-500 font-medium leading-none text-[10px]">CBU</p>
+                                  <p className="text-slate-900 font-bold tracking-tight truncate">0070012345678901234567</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-md bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                                  <ChevronRight className="w-3 h-3 text-emerald-600" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-slate-500 font-medium leading-none text-[10px]">Alias</p>
+                                  <p className="text-slate-900 font-bold">rv.entrenamientos.mp</p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-200/80 pt-3 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                            <p className="text-slate-700 font-medium">Monto Cuota:</p>
-                            <p className="text-[#1e4e6d] font-black text-lg leading-none">$17.000 <span className="text-xs text-slate-500 font-normal">/ mes</span></p>
+                          <div className="sm:w-36 bg-gradient-to-br from-[#1e4e6d] to-[#2a6f97] rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-blue-200 block mb-1">Cuota</span>
+                            <p className="text-white font-black text-2xl leading-none">$17.000</p>
+                            <span className="text-blue-200 text-[10px] font-medium mt-1">/ mes</span>
                           </div>
                         </div>
 
+                        {/* Estado del pago */}
                         {user.payment_status === 'Pagado' && (
-                          <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 text-xs text-emerald-800 leading-relaxed font-medium">
-                            <span className="text-emerald-950 font-bold">¡Cuota al día!</span> Registrado mediante <span className="font-bold">{user.payment_method}</span>.
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                              <Shield className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <div className="text-xs text-emerald-800 font-medium leading-relaxed">
+                              <span className="text-emerald-950 font-bold">¡Cuota al día!</span> Registrado mediante <span className="font-bold">{user.payment_method}</span>.
+                            </div>
                           </div>
                         )}
 
                         {user.payment_status === 'Pendiente_Verificacion' && (
-                          <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-200 text-xs text-blue-850 leading-relaxed font-medium">
-                            Comprobante <strong>&quot;{user.payment_receipt_url}&quot;</strong> en revisión.
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                              <Clock className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="text-xs text-blue-800 font-medium leading-relaxed">
+                              Comprobante <strong>&quot;{user.payment_receipt_url}&quot;</strong> en revisión.
+                            </div>
                           </div>
                         )}
 
                         {user.payment_status === 'Vencido' && (
-                          <div className="p-3.5 rounded-xl bg-red-50/50 border border-red-200 text-xs text-red-800 leading-relaxed font-medium">
-                            <strong>Rechazado:</strong> {user.payment_motivo_rechazo || 'Comprobante no válido.'}
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-50 border border-red-200">
+                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                              <AlertTriangle className="w-4 h-4 text-red-600" />
+                            </div>
+                            <div className="text-xs text-red-800 font-medium leading-relaxed">
+                              <strong>Rechazado:</strong> {user.payment_motivo_rechazo || 'Comprobante no válido.'}
+                            </div>
                           </div>
                         )}
 
                         {user.payment_status === 'Pendiente_Pago' && (
-                          <div className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200 text-xs text-amber-800 leading-relaxed font-medium">
-                            <strong>Falta registrar pago:</strong> Reportá tu transferencia mensual.
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                              <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <div className="text-xs text-amber-800 font-medium leading-relaxed">
+                              <strong>Falta registrar pago:</strong> Reportá tu transferencia mensual.
+                            </div>
                           </div>
                         )}
 
-                      {(user.payment_status === 'Pendiente_Pago' || user.payment_status === 'Vencido') && (
-                        <form onSubmit={handleUploadReceipt} className="pt-3 border-t border-slate-100 space-y-2.5 relative z-10">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Cargar comprobante de pago</label>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <input
-                              type="file"
-                              accept="image/*,.pdf"
-                              onChange={(e) => {
-                                setReceiptFile(e.target.files?.[0] || null);
-                                setUploadError('');
-                              }}
-                              className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs text-slate-900 outline-none transition-all file:mr-2 file:py-0.5 file:px-2 file:rounded-full file:border-0 file:text-[9px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-                            />
-                            <button
-                              type="submit"
-                              disabled={!receiptFile || uploadingReceipt}
-                              className="sm:w-48 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-full shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              {uploadingReceipt ? 'Enviando...' : 'Enviar Comprobante'}
-                            </button>
-                          </div>
-                          {uploadError && <p className="text-[10px] text-red-650 font-medium">{uploadError}</p>}
-                        </form>
-                      )}
+                        {/* Upload form */}
+                        {(user.payment_status === 'Pendiente_Pago' || user.payment_status === 'Vencido') && (
+                          <form onSubmit={handleUploadReceipt} className="pt-4 border-t border-slate-100 space-y-3 relative z-10">
+                            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
+                              <Upload className="w-3 h-3" />
+                              Cargar comprobante de pago
+                            </label>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => {
+                                  setReceiptFile(e.target.files?.[0] || null);
+                                  setUploadError('');
+                                }}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[#1e4e6d] focus:ring-1 focus:ring-[#1e4e6d]/20 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none transition-all file:mr-2 file:py-0.5 file:px-2.5 file:rounded-full file:border-0 file:text-[9px] file:font-bold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300"
+                              />
+                              <button
+                                type="submit"
+                                disabled={!receiptFile || uploadingReceipt}
+                                className="sm:w-52 py-2.5 bg-[#1e4e6d] hover:bg-[#2a6f97] text-white font-bold text-xs rounded-xl shadow-md shadow-[#1e4e6d]/10 hover:shadow-[#1e4e6d]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                {uploadingReceipt ? 'Enviando...' : 'Enviar Comprobante'}
+                              </button>
+                            </div>
+                            {uploadError && <p className="text-[10px] text-red-650 font-medium">{uploadError}</p>}
+                          </form>
+                        )}
+                      </div>
                     </SectionCard>
 
                     {/* APTO FÍSICO */}
-                    <SectionCard spaceY="space-y-5">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
-                        <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2`}>
-                          <Heart className="w-5 h-5 text-red-500" />
-                          Apto Físico
-                        </h3>
-                        <StatusBadge status={user.apto_medico_status} variant="medical" />
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      <div className="bg-gradient-to-r from-rose-500 to-pink-500 px-6 sm:px-8 py-5 rounded-t-[32px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                              <Stethoscope className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className={`${archivoFont.className} text-base sm:text-lg font-black text-white uppercase tracking-tight leading-none`}>
+                                Apto Físico
+                              </h3>
+                              <p className="text-rose-100 text-[11px] font-semibold mt-0.5">
+                                Certificado médico obligatorio
+                              </p>
+                            </div>
+                          </div>
+                          <StatusBadge status={user.apto_medico_status} variant="medical" className="!text-[9px] !px-3 !py-1 !rounded-lg bg-white/15 !border-white/25 !text-white backdrop-blur-sm" />
+                        </div>
                       </div>
 
+                      <div className="px-6 sm:px-8 py-6 space-y-5">
                         {user.apto_medico_status === 'vigente' && user.apto_medico_vencimiento && (
-                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed font-medium">
-                            Válido hasta: <strong className="text-slate-900">{new Date(user.apto_medico_vencimiento).toLocaleDateString("es-AR")}</strong>.
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                              <Shield className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <div className="text-xs text-emerald-800 font-medium leading-relaxed">
+                              Válido hasta: <strong className="text-emerald-950">{new Date(user.apto_medico_vencimiento).toLocaleDateString("es-AR")}</strong>.
+                            </div>
                           </div>
                         )}
 
                         {user.apto_medico_status === 'pendiente_verificacion' && (
-                          <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-200 text-xs text-blue-800 leading-relaxed font-medium">
-                            Comprobante médico subido. Esperando validación.
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                              <Clock className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="text-xs text-blue-800 font-medium">
+                              Comprobante médico subido. Esperando validación.
+                            </div>
                           </div>
                         )}
 
                         {user.apto_medico_status === 'rechazado' && (
-                          <div className="p-3.5 rounded-xl bg-red-50/50 border border-red-200 text-xs text-red-800 leading-relaxed font-medium">
-                            <strong>Rechazado:</strong> {user.apto_medico_motivo_rechazo || 'Documento no válido.'}
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-50 border border-red-200">
+                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                              <AlertTriangle className="w-4 h-4 text-red-600" />
+                            </div>
+                            <div className="text-xs text-red-800 font-medium leading-relaxed">
+                              <strong>Rechazado:</strong> {user.apto_medico_motivo_rechazo || 'Documento no válido.'}
+                            </div>
                           </div>
                         )}
 
                         {user.apto_medico_status === 'no_entregado' && (
-                          <div className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200 text-xs text-amber-800 leading-relaxed flex items-start gap-1.5 font-medium">
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600 mt-0.5" />
-                            <span>Obligatorio para participar en entrenamientos presenciales.</span>
+                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                              <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <div className="text-xs text-amber-800 font-medium leading-relaxed">
+                              Obligatorio para participar en entrenamientos presenciales.
+                            </div>
                           </div>
                         )}
 
-                      {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado') && (
-                        <form onSubmit={handleUploadCert} className="pt-3 border-t border-slate-100 space-y-2.5 relative z-10">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Cargar apto médico</label>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <input
-                              type="file"
-                              accept="image/*,.pdf"
-                              onChange={(e) => {
-                                setCertFile(e.target.files?.[0] || null);
-                                setCertError('');
-                              }}
-                              className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs text-slate-900 outline-none transition-all file:mr-2 file:py-0.5 file:px-2 file:rounded-full file:border-0 file:text-[9px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-                            />
-                            <button
-                              type="submit"
-                              disabled={!certFile || uploadingCert}
-                              className="sm:w-48 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-full shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              {uploadingCert ? 'Enviando...' : 'Enviar Certificado'}
-                            </button>
-                          </div>
-                          {certError && <p className="text-[10px] text-red-655 font-medium">{certError}</p>}
-                        </form>
-                      )}
+                        {/* Upload form */}
+                        {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado') && (
+                          <form onSubmit={handleUploadCert} className="pt-4 border-t border-slate-100 space-y-3 relative z-10">
+                            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
+                              <Upload className="w-3 h-3" />
+                              Cargar apto médico
+                            </label>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => {
+                                  setCertFile(e.target.files?.[0] || null);
+                                  setCertError('');
+                                }}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-400/20 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none transition-all file:mr-2 file:py-0.5 file:px-2.5 file:rounded-full file:border-0 file:text-[9px] file:font-bold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300"
+                              />
+                              <button
+                                type="submit"
+                                disabled={!certFile || uploadingCert}
+                                className="sm:w-52 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                {uploadingCert ? 'Enviando...' : 'Enviar Certificado'}
+                              </button>
+                            </div>
+                            {certError && <p className="text-[10px] text-red-655 font-medium">{certError}</p>}
+                          </form>
+                        )}
+                      </div>
                     </SectionCard>
                   </div>
 
                   {/* COLUMNA DERECHA (1/3) */}
                   <div className="space-y-6">
+
                     {/* CONTACTO ENTRENADOR */}
-                    <SectionCard spaceY="space-y-4">
-                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <Users className="w-5 h-5 text-emerald-600" />
-                        Contacto Entrenador
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        ¿Tenés dudas sobre los entrenamientos o necesitas justificar una inasistencia? Escribile directamente a tu entrenador:
-                      </p>
-                      <a
-                        href={whatsappLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-full text-center flex items-center justify-center gap-2 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer uppercase tracking-wider"
-                      >
-                        <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                          <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.978L2 22l5.233-1.372a9.948 9.948 0 0 0 4.779 1.222h.004c5.505 0 9.989-4.478 9.99-9.985A9.97 9.97 0 0 0 12.012 2zm5.835 14.129c-.256.719-1.285 1.408-1.768 1.47-.482.062-1.077.087-3.136-.763-2.636-1.087-4.32-3.791-4.452-3.966-.131-.174-1.071-1.428-1.071-2.723 0-1.294.678-1.928.919-2.19.242-.262.528-.328.703-.328.176 0 .351.001.503.008.157.007.368-.06.575.441.207.502.71 1.733.772 1.859.062.126.103.272.019.439-.083.167-.124.272-.248.419-.124.146-.26.326-.372.438-.124.125-.254.261-.11.512.145.251.644 1.062 1.379 1.718.948.845 1.745 1.107 1.993 1.232.247.126.392.105.538-.063.145-.167.621-.722.787-.968.166-.246.331-.207.558-.123.228.084 1.448.682 1.696.807.248.125.414.188.476.293.061.104.061.603-.195 1.322z" />
-                        </svg>
-                        Enviar mensaje a {coachName}
-                      </a>
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      <div className="bg-gradient-to-r from-emerald-500 to-green-500 px-6 py-4 rounded-t-[32px]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <MessageCircle className="w-4.5 h-4.5 text-white" />
+                          </div>
+                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
+                            Tu Entrenador
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="px-6 py-5 space-y-4">
+                        {/* Coach card */}
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white font-black text-base uppercase shadow-sm">
+                            {coachName[0]}
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-bold text-slate-900 leading-none">{coachName}</p>
+                            <p className="text-[10px] text-slate-500 font-semibold mt-1 uppercase tracking-wider">Coordinador</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                          ¿Tenés dudas o necesitas justificar una inasistencia?
+                        </p>
+                        <a
+                          href={whatsappLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl text-center flex items-center justify-center gap-2 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer uppercase tracking-wider"
+                        >
+                          <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                            <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.978L2 22l5.233-1.372a9.948 9.948 0 0 0 4.779 1.222h.004c5.505 0 9.989-4.478 9.99-9.985A9.97 9.97 0 0 0 12.012 2zm5.835 14.129c-.256.719-1.285 1.408-1.768 1.47-.482.062-1.077.087-3.136-.763-2.636-1.087-4.32-3.791-4.452-3.966-.131-.174-1.071-1.428-1.071-2.723 0-1.294.678-1.928.919-2.19.242-.262.528-.328.703-.328.176 0 .351.001.503.008.157.007.368-.06.575.441.207.502.71 1.733.772 1.859.062.126.103.272.019.439-.083.167-.124.272-.248.419-.124.146-.26.326-.372.438-.124.125-.254.261-.11.512.145.251.644 1.062 1.379 1.718.948.845 1.745 1.107 1.993 1.232.247.126.392.105.538-.063.145-.167.621-.722.787-.968.166-.246.331-.207.558-.123.228.084 1.448.682 1.696.807.248.125.414.188.476.293.061.104.061.603-.195 1.322z" />
+                          </svg>
+                          Enviar WhatsApp
+                        </a>
+                      </div>
                     </SectionCard>
 
                     {/* CUMPLEAÑOS DE LA SEMANA */}
-                    <SectionCard spaceY="space-y-4">
-                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <Heart className="w-5 h-5 text-rose-500" />
-                        Cumpleaños de la Semana
-                      </h3>
-
-                      {birthdaysThisWeek.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">No hay cumpleaños de compañeros esta semana.</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {birthdaysThisWeek.map(member => (
-                            <div key={member.id} className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 font-extrabold text-sm uppercase">
-                                {member.name ? member.name[0] : 'C'}
-                              </div>
-                              <div className="text-left">
-                                <p className="text-xs font-bold text-slate-850 leading-none">{member.name}</p>
-                                <p className="text-[10px] text-slate-500 font-medium mt-1">Cumple el {member.birthdayStr}</p>
-                              </div>
-                            </div>
-                          ))}
+                    <SectionCard spaceY="space-y-0" padding="p-0">
+                      <div className="bg-gradient-to-r from-violet-500 to-purple-500 px-6 py-4 rounded-t-[32px]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <Cake className="w-4.5 h-4.5 text-white" />
+                          </div>
+                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
+                            Cumpleaños
+                          </h3>
+                        </div>
                       </div>
-                    )}
+                      <div className="px-6 py-5">
+                        {birthdaysThisWeek.length === 0 ? (
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
+                              <Cake className="w-4 h-4 text-violet-300" />
+                            </div>
+                            <p className="text-xs text-slate-400 italic leading-relaxed">No hay cumpleaños de compañeros esta semana.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {birthdaysThisWeek.map(member => (
+                              <div key={member.id} className="flex items-center gap-3 bg-gradient-to-r from-violet-50 to-purple-50/50 p-3 rounded-xl border border-violet-100/80">
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xs uppercase shadow-sm">
+                                  {member.name ? member.name[0] : '🎂'}
+                                </div>
+                                <div className="text-left min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-slate-850 leading-none truncate">{member.name}</p>
+                                  <p className="text-[10px] text-violet-600 font-semibold mt-1">🎉 {member.birthdayStr}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </SectionCard>
                   </div>
 
