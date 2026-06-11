@@ -20,6 +20,7 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
   const [approvingAthlete, setApprovingAthlete] = useState<Athlete | null>(null);
   const [method, setMethod] = useState<'Transferencia' | 'Efectivo' | 'Condonar'>('Transferencia');
   const [amount, setAmount] = useState<number>(17000);
+  const [visibleCount, setVisibleCount] = useState<number>(6);
 
   const handleOpenReceipt = (athlete: Athlete) => {
     if (!athlete.payment_receipt_url) return;
@@ -64,91 +65,103 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
           <p className="text-muted-foreground text-sm font-medium">No hay deudas ni pagos pendientes de validación</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {pendingPagos.map((athlete) => {
-            const hasReceipt = !!athlete.payment_receipt_url;
-            const isVerifying = athlete.payment_status === 'Pendiente_Verificacion';
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingPagos.slice(0, visibleCount).map((athlete) => {
+              const hasReceipt = !!athlete.payment_receipt_url;
+              const isVerifying = athlete.payment_status === 'Pendiente_Verificacion';
 
-            return (
-              <div
-                key={athlete.id}
-                className="bg-card rounded-2xl p-5 border border-border flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all duration-200"
+              return (
+                <div
+                  key={athlete.id}
+                  className="bg-card rounded-2xl p-5 border border-border flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  {/* Info del atleta */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-foreground text-base leading-tight">
+                        {athlete.name || 'Sin nombre'}
+                      </h3>
+                    </div>
+
+                    {/* Badges de Mora & Estado */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {athlete.mora_months && athlete.mora_months > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 dark:bg-red-950/20 text-[#990000] dark:text-red-400 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-red-200 dark:border-red-900/50">
+                          <ShieldAlert className="w-3 h-3" />
+                          Mora: {athlete.mora_months} {athlete.mora_months === 1 ? 'mes' : 'meses'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-amber-200 dark:border-amber-900/50">
+                          Sin Mora
+                        </span>
+                      )}
+
+                      <span
+                        className={`inline-flex px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full border ${
+                          isVerifying
+                            ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50'
+                            : 'bg-zinc-50 dark:bg-zinc-950/20 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800'
+                        }`}
+                      >
+                        {isVerifying ? 'Transferencia Subida' : 'Pendiente de Pago'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="pt-2 border-t border-border flex flex-wrap gap-2 items-center justify-between">
+                    <div>
+                      {hasReceipt && isVerifying ? (
+                        <button
+                          onClick={() => handleOpenReceipt(athlete)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Ver Comprobante
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground italic flex items-center gap-1">
+                          <CreditCard className="w-3.5 h-3.5 text-muted-foreground/60" />
+                          Sin comprobante subido
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      {isVerifying && (
+                        <button
+                          onClick={() => setRejectingAthlete(athlete)}
+                          className="p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl cursor-pointer transition-all flex items-center justify-center"
+                          title="Rechazar Comprobante"
+                        >
+                          <XCircle className="w-4.5 h-4.5" />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleOpenApproveModal(athlete)}
+                        className="inline-flex items-center gap-1 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Aprobar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {pendingPagos.length > visibleCount && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + 6)}
+                className="px-5 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-xs font-bold transition-all duration-200 hover:scale-[1.02] hover:shadow-sm active:scale-[0.98] cursor-pointer shadow-sm"
               >
-                {/* Info del atleta */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-foreground text-base leading-tight">
-                      {athlete.name || 'Sin nombre'}
-                    </h3>
-                  </div>
-
-                  {/* Badges de Mora & Estado */}
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    {athlete.mora_months && athlete.mora_months > 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 dark:bg-red-950/20 text-[#990000] dark:text-red-400 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-red-200 dark:border-red-900/50">
-                        <ShieldAlert className="w-3 h-3" />
-                        Mora: {athlete.mora_months} {athlete.mora_months === 1 ? 'mes' : 'meses'}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-amber-200 dark:border-amber-900/50">
-                        Sin Mora
-                      </span>
-                    )}
-
-                    <span
-                      className={`inline-flex px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full border ${
-                        isVerifying
-                          ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50'
-                          : 'bg-zinc-50 dark:bg-zinc-950/20 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800'
-                      }`}
-                    >
-                      {isVerifying ? 'Transferencia Subida' : 'Pendiente de Pago'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="pt-2 border-t border-border flex flex-wrap gap-2 items-center justify-between">
-                  <div>
-                    {hasReceipt && isVerifying ? (
-                      <button
-                        onClick={() => handleOpenReceipt(athlete)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Ver Comprobante
-                      </button>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground italic flex items-center gap-1">
-                        <CreditCard className="w-3.5 h-3.5 text-muted-foreground/60" />
-                        Sin comprobante subido
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-1.5">
-                    {isVerifying && (
-                      <button
-                        onClick={() => setRejectingAthlete(athlete)}
-                        className="p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl cursor-pointer transition-all flex items-center justify-center"
-                        title="Rechazar Comprobante"
-                      >
-                        <XCircle className="w-4.5 h-4.5" />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleOpenApproveModal(athlete)}
-                      className="inline-flex items-center gap-1 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Aprobar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                Ver más atletas
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -202,9 +215,9 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
               <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Medio de Pago</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: 'Transferencia', label: 'Transf.', color: 'border-indigo-500 text-indigo-650 dark:text-indigo-400 bg-indigo-500/5' },
-                  { value: 'Efectivo', label: 'Efectivo', color: 'border-emerald-500 text-emerald-650 dark:text-emerald-400 bg-emerald-500/5' },
-                  { value: 'Condonar', label: 'Condonar', color: 'border-amber-500 text-amber-650 dark:text-amber-400 bg-amber-500/5' },
+                  { value: 'Transferencia', label: 'Transf.', activeColor: 'bg-indigo-650 dark:bg-indigo-600 text-white border-indigo-750' },
+                  { value: 'Efectivo', label: 'Efectivo', activeColor: 'bg-emerald-650 dark:bg-emerald-600 text-white border-emerald-750' },
+                  { value: 'Condonar', label: 'Condonar', activeColor: 'bg-amber-600 dark:bg-amber-500 text-white border-amber-700' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -217,9 +230,9 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                         setAmount(17000);
                       }
                     }}
-                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                    className={`px-3 py-2.5 rounded-xl border text-xs font-extrabold transition-all text-center cursor-pointer ${
                       method === opt.value
-                        ? `${opt.color} ring-2 ring-primary/20 border-current`
+                        ? `${opt.activeColor} ring-2 ring-primary/20 border-transparent shadow-sm`
                         : 'border-border text-muted-foreground bg-transparent hover:bg-muted'
                     }`}
                   >
@@ -244,8 +257,9 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                 </div>
               </div>
             ) : (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-[11px] text-amber-800 dark:text-amber-400 font-medium leading-normal">
-                <strong>Condonación de cuota:</strong> Se condonará la cuota mensual ($0) y el atleta quedará al día de forma inmediata.
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-950 dark:text-amber-100 font-semibold leading-relaxed shadow-sm">
+                <strong className="text-amber-800 dark:text-amber-400 block mb-0.5 font-bold">Condonación de cuota:</strong>
+                Se registrará la deuda de este mes como condonada ($0) y el atleta quedará al día de forma inmediata sin generar mora.
               </div>
             )}
 
