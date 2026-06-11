@@ -54,6 +54,19 @@ export function parseDateLocal(dateStr: string): Date {
   return new Date(y, m - 1, d);
 }
 
+export function getExperienceYears(foundedDateStr?: string): number {
+  if (!foundedDateStr) return 10;
+  const founded = parseDateLocal(foundedDateStr);
+  if (isNaN(founded.getTime())) return 10;
+  const today = new Date();
+  let years = today.getFullYear() - founded.getFullYear();
+  const m = today.getMonth() - founded.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < founded.getDate())) {
+    years--;
+  }
+  return Math.max(0, years);
+}
+
 export function calculateProfileCompletion(user: Athlete | null): number {
   if (!user) return 0;
   let points = 0;

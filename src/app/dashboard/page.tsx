@@ -24,14 +24,20 @@ import {
   Upload,
   ExternalLink,
   MapPin,
-  Clock
+  Clock,
+  Footprints,
+  Activity,
+  Dumbbell,
+  Mountain,
+  Compass,
+  MessageCircle
 } from 'lucide-react';
 import { Archivo } from 'next/font/google';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SectionCard } from '@/components/ui/section-card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { parseDateLocal } from '@/lib/utils';
+import { parseDateLocal, getExperienceYears } from '@/lib/utils';
 
 const archivoFont = Archivo({
   subsets: ['latin'],
@@ -44,7 +50,7 @@ export default function AthleteDashboard() {
   const [team, setTeam] = useState<Team | null>(null);
   const parsedShifts = team ? parseTrainingDays(team.training_days) : null;
   const parsedInstructions = team ? parseInstructions(team.instructions) : null;
-  const [activeDashboardTab, setActiveDashboardTab] = useState<'entrenamientos' | 'club'>('entrenamientos');
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'inicio' | 'entrenamientos' | 'club'>('inicio');
   const [activeShiftId, setActiveShiftId] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -330,6 +336,16 @@ export default function AthleteDashboard() {
                 {/* TABS DE NAVEGACIÓN PRINCIPAL */}
                 <div className="flex border-b border-slate-200 gap-1 pb-px">
                   <button
+                    onClick={() => setActiveDashboardTab('inicio')}
+                    className={`flex-1 sm:flex-none px-6 py-3 text-sm font-extrabold uppercase tracking-tight transition-all duration-155 border-b-2 cursor-pointer ${
+                      activeDashboardTab === 'inicio'
+                        ? 'border-slate-900 text-slate-900 font-black'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Inicio
+                  </button>
+                  <button
                     onClick={() => setActiveDashboardTab('entrenamientos')}
                     className={`flex-1 sm:flex-none px-6 py-3 text-sm font-extrabold uppercase tracking-tight transition-all duration-155 border-b-2 cursor-pointer ${
                       activeDashboardTab === 'entrenamientos'
@@ -347,12 +363,120 @@ export default function AthleteDashboard() {
                         : 'border-transparent text-slate-400 hover:text-slate-600'
                     }`}
                   >
-                    Mi Estado / Club
+                    Club
                   </button>
                 </div>
               </div>
 
-              {activeDashboardTab === 'entrenamientos' ? (
+              {activeDashboardTab === 'inicio' ? (
+                <div className="space-y-6">
+                  {/* DESCRIPCION DEL EQUIPO */}
+                  <SectionCard spaceY="space-y-4">
+                    <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
+                      <Users className="w-5 h-5 text-[#1e4e6d]" />
+                      Sobre el Equipo
+                    </h3>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {team.description || 'Sin descripcion disponible.'}
+                    </p>
+                  </SectionCard>
+
+                  {/* STATS DEL EQUIPO */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white border border-slate-200 rounded-[24px] p-5 text-center shadow-sm">
+                      <div className="flex justify-center text-[#1e4e6d] mb-2">
+                        <Clock className="w-6 h-6" />
+                      </div>
+                      <p className="text-2xl font-black text-slate-900">{getExperienceYears(team.founded_date)}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5">Anos de experiencia</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-[24px] p-5 text-center shadow-sm">
+                      <div className="flex justify-center text-[#1e4e6d] mb-2">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <p className="text-2xl font-black text-slate-900">{teamMembers.length}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5">Atletas activos</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-[24px] p-5 text-center shadow-sm">
+                      <div className="flex justify-center text-[#1e4e6d] mb-2">
+                        <MapPin className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-black text-slate-900 leading-tight">{team.location}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5">Ubicacion</p>
+                    </div>
+                  </div>
+
+                  {/* ESPECIALIDADES */}
+                  {team.specialties && (
+                    <SectionCard spaceY="space-y-3">
+                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
+                        <Activity className="w-5 h-5 text-emerald-600" />
+                        Especialidades
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {team.specialties.split(',').map(s => s.trim()).filter(Boolean).map((sportName) => {
+                          const getIcon = (name: string) => {
+                            switch (name.toLowerCase()) {
+                              case 'trail running': return Footprints;
+                              case 'ultra trail': return Mountain;
+                              case 'ruta / calle': return Compass;
+                              case 'funcional': return Dumbbell;
+                              case 'trekking': return Mountain;
+                              case 'aventura': return Compass;
+                              case 'crossfit': return Dumbbell;
+                              case 'ciclismo': return Activity;
+                              default: return Activity;
+                            }
+                          };
+                          const SportIcon = getIcon(sportName);
+                          return (
+                            <div
+                              key={sportName}
+                              className="bg-slate-50 border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2"
+                            >
+                              <SportIcon className="w-4 h-4 text-[#1e4e6d]" />
+                              <span>{sportName}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </SectionCard>
+                  )}
+
+                  {/* HORARIOS */}
+                  {team.training_days && (
+                    <SectionCard spaceY="space-y-3">
+                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
+                        <Clock className="w-5 h-5 text-blue-600" />
+                        Horarios de Entrenamiento
+                      </h3>
+                      <p className="text-sm text-slate-600 font-medium">{team.training_days}</p>
+                    </SectionCard>
+                  )}
+
+                  {/* WHATSAPP COACH */}
+                  <SectionCard spaceY="space-y-4">
+                    <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
+                      <MessageCircle className="w-5 h-5 text-emerald-600" />
+                      Contacto con el Entrenador
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                      Tenes dudas sobre los entrenamientos o necesitas justificar una inasistencia? Escribile directamente a <strong className="text-[#1e4e6d]">{coachName}</strong>:
+                    </p>
+                    <a
+                      href={whatsappLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm rounded-full text-center flex items-center justify-center gap-2.5 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                    >
+                      <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.94 0c3.202.001 6.212 1.248 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.618-5.33 11.942-11.942 11.942-2.01-.001-3.987-.504-5.748-1.46L0 24zm6.59-4.846c1.6.95 3.488 1.449 5.348 1.451 5.424 0 9.835-4.41 9.839-9.834.002-2.628-1.021-5.1-2.881-6.958-1.859-1.858-4.332-2.88-6.962-2.882-5.422 0-9.83 4.41-9.835 9.836-.001 1.87.49 3.698 1.42 5.3l-.933 3.406 3.493-.916zm11.23-5.263c-.3-.149-1.771-.875-2.043-.974-.271-.099-.469-.149-.665.15-.197.299-.762.974-.934 1.171-.172.197-.344.223-.644.074-.3-.149-1.27-.468-2.42-1.493-.895-.798-1.5-1.785-1.676-2.083-.176-.299-.019-.46.13-.609.135-.134.3-.349.449-.523.15-.174.2-.299.3-.498.1-.199.05-.374-.025-.523-.075-.149-.665-1.603-.91-2.193-.24-.576-.482-.498-.665-.508-.172-.007-.37-.008-.568-.008-.198 0-.52.074-.792.373-.272.299-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.771-.724 2.022-1.424.252-.699.252-1.299.177-1.424-.075-.124-.272-.199-.572-.349z" />
+                      </svg>
+                      Chatear con {coachName}
+                    </a>
+                  </SectionCard>
+                </div>
+              ) : activeDashboardTab === 'entrenamientos' ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start text-left">
 
                   {/* COLUMNA IZQUIERDA (WIDER: 2/3 cols) */}
