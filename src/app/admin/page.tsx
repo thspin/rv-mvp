@@ -32,6 +32,7 @@ import {
   History,
   Settings,
   LayoutDashboard,
+  ArrowLeft,
 } from "lucide-react"
 
 export default function AdminPage() {
@@ -210,8 +211,19 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Panel de Administracion</h1>
-        <p className="text-muted-foreground mb-6">{team?.name}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-1">Panel de Administración</h1>
+            <p className="text-muted-foreground text-sm">{team?.name}</p>
+          </div>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer self-start sm:self-center"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver al Dashboard
+          </button>
+        </div>
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
