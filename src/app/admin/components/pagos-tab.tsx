@@ -118,32 +118,31 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                       Condonar
                     </button>
 
-                    {isVerifying ? (
-                      <>
-                        <button
-                          onClick={() => setRejectingAthlete(athlete)}
-                          className="p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl cursor-pointer transition-all flex items-center justify-center"
-                          title="Rechazar Comprobante"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onApprove(athlete, defaultAmount, athlete.payment_method || 'Transferencia')}
-                          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          Aprobar
-                        </button>
-                      </>
-                    ) : (
+                    {isVerifying && (
                       <button
-                        onClick={() => onApprove(athlete, defaultAmount, 'Efectivo')}
-                        className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                        onClick={() => setRejectingAthlete(athlete)}
+                        className="p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl cursor-pointer transition-all flex items-center justify-center"
+                        title="Rechazar Comprobante"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                        Aprobar Efectivo
+                        <XCircle className="w-4 h-4" />
                       </button>
                     )}
+
+                    <button
+                      onClick={() => onApprove(athlete, defaultAmount, 'Transferencia')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-550 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Aprobar Transf.
+                    </button>
+
+                    <button
+                      onClick={() => onApprove(athlete, defaultAmount, 'Efectivo')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Aprobar Efec.
+                    </button>
                   </div>
                 </div>
               </div>
