@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Navbar from "@/components/Navbar"
+import NotificationBell from "@/components/NotificationBell"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { 
   getAllAthletes, 
@@ -10,12 +11,13 @@ import {
   updateTeam,
   updateAthleteTeamStatus,
   updateAthleteAptoStatus,
-  updateAthletePaymentStatus,
-  addPaymentRecord,
-  getPaymentHistory,
+  approvePaymentAsync,
+  rejectPaymentAsync,
+  condonePaymentAsync,
+  getActivityLogsAsync,
   Athlete,
   Team,
-  Payment,
+  ActivityLog,
 } from "@/lib/db"
 import { useAuthGuard } from "@/hooks/useAuthGuard"
 import { useToast } from "@/components/ui/toast"
@@ -33,7 +35,15 @@ import {
   Settings,
   LayoutDashboard,
   ArrowLeft,
+  X,
 } from "lucide-react"
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+}
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuthGuard(false)
@@ -41,13 +51,25 @@ export default function AdminPage() {
   const [dataLoading, setDataLoading] = useState(true)
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [team, setTeam] = useState<Team | null>(null)
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [activeTab, setActiveTab] = useState<"general" | "equipo" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("general")
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
   const [modalType, setModalType] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
-  const [teamForm, setTeamForm] = useState({ name: "", logo_url: "", description: "", training_days: "", coach: "", instructions: "", location: "", founded_date: "", specialties: "", special_instructions: "", google_maps_url: "" })
-  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false)
+  const [teamForm, setTeamForm] = useState({ 
+    name: "", 
+    logo_url: "", 
+    description: "", 
+    training_days: "", 
+    coach: "", 
+    instructions: "", 
+    location: "", 
+    founded_date: "", 
+    specialties: "", 
+    special_instructions: "", 
+    google_maps_url: "",
+    subscription_plans: "",
+  })
   const [expelConfirmOpen, setExpelConfirmOpen] = useState(false)
   const [pendingActionAthlete, setPendingActionAthlete] = useState<Athlete | null>(null)
   const router = useRouter()
@@ -78,13 +100,17 @@ export default function AdminPage() {
           founded_date: teamData.founded_date || "",
           specialties: teamData.specialties || "",
           special_instructions: teamData.special_instructions || "",
-          google_maps_url: teamData.google_maps_url || ""
+          google_maps_url: teamData.google_maps_url || "",
+          subscription_plans: teamData.subscription_plans || JSON.stringify([
+            { id: "individual", name: "Individual", price: 17000, description: "Acceso completo para un atleta individual" },
+            { id: "familiar", name: "Familiar", price: 30000, description: "Acceso para el grupo familiar" }
+          ])
         })
       }
     }
 
-    const paymentHistory = await getPaymentHistory()
-    setPayments(paymentHistory)
+    const logs = await getActivityLogsAsync()
+    setActivityLogs(logs)
     setDataLoading(false)
   }
 
@@ -99,7 +125,7 @@ export default function AdminPage() {
   const pendingSolicitudes = athletes.filter(a => a.team_status === "pendiente")
   const activeMembers = athletes.filter(a => a.team_status === "activo")
   const pendingAptos = athletes.filter(a => a.apto_medico_status === "pendiente_verificacion")
-  const pendingPagos = athletes.filter(a => a.payment_status === "Pendiente_Verificacion")
+  const pendingPagos = athletes.filter(a => a.team_status === "activo" && a.payment_status !== "Pagado")
 
   const handleToggleSpecialty = (specialty: string) => {
     const current = teamForm.specialties
@@ -112,6 +138,35 @@ export default function AdminPage() {
       newList = [...current, specialty];
     }
     setTeamForm({ ...teamForm, specialties: newList.join(',') });
+  };
+
+  const plans: SubscriptionPlan[] = (() => {
+    try {
+      return teamForm.subscription_plans ? JSON.parse(teamForm.subscription_plans) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const handleAddPlan = () => {
+    const newPlan: SubscriptionPlan = {
+      id: crypto.randomUUID(),
+      name: "Nuevo Plan",
+      price: 0,
+      description: "Descripción del plan"
+    };
+    const updatedPlans = [...plans, newPlan];
+    setTeamForm({ ...teamForm, subscription_plans: JSON.stringify(updatedPlans) });
+  };
+
+  const handleUpdatePlan = (index: number, updates: Partial<SubscriptionPlan>) => {
+    const updatedPlans = plans.map((p, i) => i === index ? { ...p, ...updates } : p);
+    setTeamForm({ ...teamForm, subscription_plans: JSON.stringify(updatedPlans) });
+  };
+
+  const handleDeletePlan = (index: number) => {
+    const updatedPlans = plans.filter((_, i) => i !== index);
+    setTeamForm({ ...teamForm, subscription_plans: JSON.stringify(updatedPlans) });
   };
 
   async function handleAcceptSolicitud(athlete: Athlete) {
@@ -142,36 +197,6 @@ export default function AdminPage() {
     await loadData()
   }
 
-  async function handleApprovePago(athlete: Athlete) {
-    await updateAthletePaymentStatus(athlete.email, "Pagado")
-    await addPaymentRecord(athlete.email, athlete.name || "Sin nombre", 17000, athlete.payment_method || "No especificado")
-    setModalType(null)
-    setSelectedAthlete(null)
-    await loadData()
-  }
-
-  async function handleRejectPago() {
-    if (!selectedAthlete) return
-    await updateAthletePaymentStatus(selectedAthlete.email, "Pendiente_Pago", rejectReason)
-    setModalType(null)
-    setSelectedAthlete(null)
-    setRejectReason("")
-    await loadData()
-  }
-
-  async function handleManualPayment(athlete: Athlete) {
-    setPendingActionAthlete(athlete)
-    setPaymentConfirmOpen(true)
-  }
-
-  async function confirmManualPayment() {
-    if (!pendingActionAthlete) return
-    await updateAthletePaymentStatus(pendingActionAthlete.email, "Pagado")
-    await addPaymentRecord(pendingActionAthlete.email, pendingActionAthlete.name || "Sin nombre", 17000, "Efectivo/Manual")
-    setPendingActionAthlete(null)
-    await loadData()
-  }
-
   async function handleExpelAthlete(athlete: Athlete) {
     setPendingActionAthlete(athlete)
     setExpelConfirmOpen(true)
@@ -183,7 +208,6 @@ export default function AdminPage() {
     setPendingActionAthlete(null)
     await loadData()
   }
-
 
   async function handleSaveTeam() {
     if (!team) return
@@ -216,13 +240,16 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold text-foreground mb-1">Panel de Administración</h1>
             <p className="text-muted-foreground text-sm">{team?.name}</p>
           </div>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer self-start sm:self-center"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver al Dashboard
-          </button>
+          <div className="flex items-center gap-3 self-start sm:self-center">
+            <NotificationBell />
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver al Dashboard
+            </button>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -377,7 +404,72 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="border-t border-border pt-6 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-foreground">Planes de Suscripción</h3>
+                  <button
+                    type="button"
+                    onClick={handleAddPlan}
+                    className="px-3.5 py-1.5 bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                  >
+                    + Agregar Plan
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {plans.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">No hay planes de suscripción creados.</p>
+                  ) : (
+                    plans.map((plan, idx) => (
+                      <div key={plan.id || idx} className="bg-card/50 border border-border rounded-2xl p-4 space-y-3 relative group">
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePlan(idx)}
+                          className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors cursor-pointer"
+                          title="Eliminar Plan"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="md:col-span-2">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Nombre del Plan</label>
+                            <input
+                              type="text"
+                              value={plan.name}
+                              onChange={(e) => handleUpdatePlan(idx, { name: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                              placeholder="Ej. Plan Individual"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Precio (ARS)</label>
+                            <input
+                              type="number"
+                              value={plan.price}
+                              onChange={(e) => handleUpdatePlan(idx, { price: Number(e.target.value) })}
+                              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                              placeholder="Ej. 17000"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Detalle / Qué incluye</label>
+                          <textarea
+                            value={plan.description}
+                            onChange={(e) => handleUpdatePlan(idx, { description: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                            rows={2}
+                            placeholder="Ej. Acceso a entrenamientos..."
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-border mt-6">
                 <button
                   onClick={handleSaveTeam}
                   className="px-6 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-sm active:scale-[0.98] cursor-pointer shadow-sm"
@@ -410,8 +502,18 @@ export default function AdminPage() {
         {activeTab === "pagos" && (
           <PagosTab
             pendingPagos={pendingPagos}
-            onApprove={handleApprovePago}
-            onReject={(athlete) => { setSelectedAthlete(athlete); setModalType("rejectPago") }}
+            onApprove={async (athlete, amount, method) => {
+              await approvePaymentAsync(athlete.email, athlete.name || "Sin nombre", amount, method);
+              await loadData();
+            }}
+            onReject={async (athlete, reason) => {
+              await rejectPaymentAsync(athlete.email, reason);
+              await loadData();
+            }}
+            onCondone={async (athlete) => {
+              await condonePaymentAsync(athlete.email, athlete.name || "Sin nombre");
+              await loadData();
+            }}
           />
         )}
 
@@ -426,7 +528,7 @@ export default function AdminPage() {
 
         {/* Historial Tab */}
         {activeTab === "historial" && (
-          <HistorialTab payments={payments} />
+          <HistorialTab logs={activityLogs} />
         )}
 
         {/* Modal de rechazo apto */}
@@ -448,13 +550,13 @@ export default function AdminPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => { setModalType(null); setSelectedAthlete(null); setRejectReason("") }}
-                  className="flex-1 py-2 bg-muted text-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
+                  className="flex-1 py-2 bg-muted text-foreground rounded-xl font-medium hover:opacity-90 transition-opacity animate-in duration-200"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleRejectApto}
-                  className="flex-1 py-2 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
+                  className="flex-1 py-2 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity animate-in duration-200"
                 >
                   Confirmar rechazo
                 </button>
@@ -462,50 +564,6 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
-        {/* Modal de rechazo pago */}
-        {modalType === "rejectPago" && selectedAthlete && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-card rounded-xl p-6 w-full max-w-md border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Rechazar comprobante de pago</h3>
-              <p className="text-sm text-muted-foreground mb-4">Atleta: {selectedAthlete.name}</p>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-foreground mb-1">Motivo del rechazo</label>
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                  placeholder="Ingresa el motivo..."
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setModalType(null); setSelectedAthlete(null); setRejectReason("") }}
-                  className="flex-1 py-2 bg-muted text-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleRejectPago}
-                  className="flex-1 py-2 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Confirmar rechazo
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <ConfirmDialog
-          open={paymentConfirmOpen}
-          onOpenChange={(open) => { if (!open) setPendingActionAthlete(null); setPaymentConfirmOpen(open); }}
-          title="Registrar pago manual"
-          description={`¿Registrar pago en efectivo de ${pendingActionAthlete?.name || 'este atleta'}?`}
-          confirmLabel="Sí, registrar pago"
-          variant="default"
-          onConfirm={confirmManualPayment}
-        />
 
         <ConfirmDialog
           open={expelConfirmOpen}

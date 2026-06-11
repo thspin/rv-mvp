@@ -5,9 +5,9 @@ import { addMonthsWithClamp } from '@/lib/utils'
 import { getCurrentUserAction } from '@/lib/actions'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import type { Team, Athlete, Payment } from '@/lib/db-types'
+import type { Team, Athlete, Payment, ActivityLog } from '@/lib/db-types'
 import { fromDbAthlete } from '@/lib/db-types'
-export type { Team, Athlete, Payment, TrainingShift, ShiftInstructions } from '@/lib/db-types'
+export type { Team, Athlete, Payment, ActivityLog, TrainingShift, ShiftInstructions } from '@/lib/db-types'
 
 // =========== Auth Helpers ===========
 
@@ -113,6 +113,7 @@ function fromDbTeam(row: Record<string, unknown>): Team {
     specialties: (row.specialties || '') as string,
     special_instructions: (row.special_instructions || '') as string,
     google_maps_url: (row.google_maps_url || '') as string,
+    subscription_plans: (row.subscription_plans || '') as string,
   };
 }
 
@@ -130,8 +131,8 @@ function fromDbPayment(row: Record<string, unknown>): Payment {
 
 // =========== Column Projections ===========
 
-const TEAM_COLUMNS = 'id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url, founded_date, specialties, special_instructions, google_maps_url';
-const ATHLETE_COLUMNS = 'id, user_id, email, name, role, onboarding_complete, dni, phone, talle_remera, contacto_emergencia_name, contacto_emergencia_phone, grupo_sanguineo, alergias, afecciones, apto_medico_url, apto_medico_status, apto_medico_vencimiento, apto_medico_motivo_rechazo, team_id, team_status, payment_status, payment_receipt_url, payment_method, payment_motivo_rechazo, genero, fecha_nacimiento, tipo_documento, pais, provincia, ciudad, codigo_postal, domicilio, documento_url, documento_status, avatar_url';
+const TEAM_COLUMNS = 'id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url, founded_date, specialties, special_instructions, google_maps_url, subscription_plans';
+const ATHLETE_COLUMNS = 'id, user_id, email, name, role, onboarding_complete, dni, phone, talle_remera, contacto_emergencia_name, contacto_emergencia_phone, grupo_sanguineo, alergias, afecciones, apto_medico_url, apto_medico_status, apto_medico_vencimiento, apto_medico_motivo_rechazo, team_id, team_status, payment_status, payment_receipt_url, payment_method, payment_motivo_rechazo, genero, fecha_nacimiento, tipo_documento, pais, provincia, ciudad, codigo_postal, domicilio, documento_url, documento_status, avatar_url, mora_months, subscription_plan_id';
 const PAYMENT_COLUMNS = 'id, athlete_email, athlete_name, amount, method, created_at, status';
 
 // =========== Team Operations ===========
@@ -356,20 +357,27 @@ export async function uploadMedicalCertificateAsync(email: string, certName: str
 export async function updateAthleteTeamStatus(email: string, status: 'activo' | 'pendiente' | null): Promise<void> {
   try {
     await requireAdmin()
+    const supabase = createServiceClient()
+    const { data: athlete } = await supabase.from('athletes').select('name').eq('email', email).maybeSingle()
+    const name = athlete?.name || 'Atleta'
+
     if (status === null) {
       await updateAthleteProfileAsync(email, {
         team_id: null,
         team_status: null,
         payment_status: null,
-        payment_receipt_url: undefined,
-        payment_method: undefined,
-        payment_motivo_rechazo: undefined,
+        payment_receipt_url: '',
+        payment_method: '',
+        payment_motivo_rechazo: '',
+        mora_months: 0,
       });
+      await logActivityAsync('atletas', 'baja', name, email, 'Atleta dado de baja del equipo');
     } else if (status === 'activo') {
       await updateAthleteProfileAsync(email, {
         team_status: 'activo',
         payment_status: 'Pendiente_Pago',
       });
+      await logActivityAsync('atletas', 'alta', name, email, 'Atleta activado en el equipo');
     } else {
       await updateAthleteProfileAsync(email, {
         team_status: status,
@@ -387,11 +395,27 @@ export async function updateAthleteAptoStatus(
   rejectReason?: string
 ): Promise<void> {
   await requireAdmin()
+  const supabase = createServiceClient()
+  const { data: athlete } = await supabase.from('athletes').select('name, user_id').eq('email', email).maybeSingle()
+  const name = athlete?.name || 'Atleta'
+
   await updateAthleteProfileAsync(email, {
     apto_medico_status: status,
     apto_medico_vencimiento: vencimiento || undefined,
     apto_medico_motivo_rechazo: rejectReason || undefined,
   });
+
+  if (status === 'vigente') {
+    await logActivityAsync('aptos_medicos', 'aprobado', name, email, 'Apto médico aprobado');
+    if (athlete && athlete.user_id) {
+      await createNotification(athlete.user_id, "Apto médico aprobado", "Tu apto médico ha sido aprobado con éxito.");
+    }
+  } else if (status === 'rechazado') {
+    await logActivityAsync('aptos_medicos', 'rechazado', name, email, `Apto médico rechazado. Motivo: ${rejectReason || 'No especificado'}`);
+    if (athlete && athlete.user_id) {
+      await createNotification(athlete.user_id, "Apto médico rechazado", `Tu apto médico fue rechazado. Motivo: ${rejectReason || 'No especificado'}`);
+    }
+  }
 }
 
 export async function updateAthletePaymentStatus(
@@ -407,10 +431,20 @@ export async function updateAthletePaymentStatus(
 }
 
 export async function processRequestAsync(email: string, approve: boolean): Promise<void> {
+  await requireAdmin()
+  const supabase = createServiceClient()
+  const { data: athlete } = await supabase.from('athletes').select('name, user_id').eq('email', email).maybeSingle()
+  const name = athlete?.name || 'Atleta'
+
   if (approve) {
     await updateAthleteTeamStatus(email, 'activo');
+    await logActivityAsync('solicitudes', 'aprobado', name, email, 'Solicitud de ingreso aprobada');
+    if (athlete && athlete.user_id) {
+      await createNotification(athlete.user_id, "Solicitud aprobada", "Tu solicitud para unirte al equipo fue aprobada.");
+    }
   } else {
     await updateAthleteTeamStatus(email, null);
+    await logActivityAsync('solicitudes', 'rechazado', name, email, 'Solicitud de ingreso rechazada');
   }
 }
 
@@ -602,5 +636,188 @@ export async function getAnalyticsDataAsync() {
       morosityRate: 0,
       averagePerAthlete: 0,
     };
+  }
+}
+
+// =========== Notification & Activity Log Operations ===========
+
+export async function logActivityAsync(
+  category: 'solicitudes' | 'atletas' | 'pagos' | 'aptos_medicos',
+  action: string,
+  athleteName: string | null,
+  athleteEmail: string | null,
+  details: string | null
+): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert({
+        category,
+        action,
+        athlete_name: athleteName,
+        athlete_email: athleteEmail,
+        details,
+      });
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error in logActivityAsync:', err);
+  }
+}
+
+export async function getActivityLogsAsync(): Promise<ActivityLog[]> {
+  try {
+    await requireAdmin();
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as ActivityLog[];
+  } catch (err) {
+    console.error('Error in getActivityLogsAsync:', err);
+    return [];
+  }
+}
+
+export async function createNotification(
+  userId: string,
+  title: string,
+  message: string
+): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        title,
+        message,
+        read: false,
+      });
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error in createNotification:', err);
+  }
+}
+
+export async function getNotifications(userId: string) {
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Error in getNotifications:', err);
+    return [];
+  }
+}
+
+export async function markNotificationsAsRead(userId: string): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', userId);
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error in markNotificationsAsRead:', err);
+  }
+}
+
+// =========== Unified Payment Operations ===========
+
+export async function approvePaymentAsync(
+  email: string,
+  name: string,
+  amount: number,
+  method: string
+): Promise<void> {
+  await requireAdmin();
+  const supabase = createServiceClient();
+
+  const { data: athlete } = await supabase
+    .from('athletes')
+    .select('user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  await updateAthleteProfileAsync(email, {
+    payment_status: 'Pagado',
+    payment_receipt_url: '',
+    mora_months: 0,
+  });
+
+  await addPaymentRecord(email, name, amount, method);
+  await logActivityAsync('pagos', 'aprobado', name, email, `Pago aprobado de $${amount.toLocaleString()} vía ${method}`);
+
+  if (athlete && athlete.user_id) {
+    await createNotification(
+      athlete.user_id,
+      "Pago aprobado",
+      `Tu pago de $${amount.toLocaleString()} mediante ${method} ha sido aprobado con éxito.`
+    );
+  }
+}
+
+export async function rejectPaymentAsync(email: string, rejectReason: string): Promise<void> {
+  await requireAdmin();
+  const supabase = createServiceClient();
+
+  const { data: athlete } = await supabase
+    .from('athletes')
+    .select('user_id, name')
+    .eq('email', email)
+    .maybeSingle();
+
+  await updateAthleteProfileAsync(email, {
+    payment_status: 'Pendiente_Pago',
+    payment_receipt_url: '',
+    payment_motivo_rechazo: rejectReason,
+  });
+
+  const name = athlete?.name || 'Atleta';
+  await logActivityAsync('pagos', 'rechazado', name, email, `Comprobante de pago rechazado. Motivo: ${rejectReason}`);
+
+  if (athlete && athlete.user_id) {
+    await createNotification(
+      athlete.user_id,
+      "Comprobante rechazado",
+      "Tu comprobante de pago fue rechazado. Por favor, sube uno nuevo."
+    );
+  }
+}
+
+export async function condonePaymentAsync(email: string, name: string): Promise<void> {
+  await requireAdmin();
+  const supabase = createServiceClient();
+
+  const { data: athlete } = await supabase
+    .from('athletes')
+    .select('user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  await updateAthleteProfileAsync(email, {
+    payment_status: 'Pagado',
+    payment_receipt_url: '',
+    mora_months: 0,
+  });
+
+  await addPaymentRecord(email, name, 0, 'Condonado');
+  await logActivityAsync('pagos', 'condonado', name, email, 'Pago de cuota mensual condonado');
+
+  if (athlete && athlete.user_id) {
+    await createNotification(
+      athlete.user_id,
+      "Pago condonado",
+      `El pago de tu cuota mensual ha sido condonado por el administrador.`
+    );
   }
 }

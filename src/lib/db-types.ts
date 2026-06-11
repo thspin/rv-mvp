@@ -12,6 +12,7 @@ export interface Team {
   specialties?: string;
   special_instructions?: string;
   google_maps_url?: string;
+  subscription_plans?: string;
 }
 
 export interface TrainingShift {
@@ -87,6 +88,8 @@ export interface Athlete {
   documento_url?: string;
   documento_status?: 'no_entregado' | 'pendiente_verificacion' | 'vigente' | 'rechazado';
   avatar_url?: string;
+  mora_months?: number;
+  subscription_plan_id?: string;
 }
 
 export interface Payment {
@@ -97,6 +100,16 @@ export interface Payment {
   method: string;
   created_at: string;
   status: 'aprobado' | 'rechazado';
+}
+
+export interface ActivityLog {
+  id: string;
+  category: 'solicitudes' | 'atletas' | 'pagos' | 'aptos_medicos';
+  action: string;
+  athlete_name: string | null;
+  athlete_email: string | null;
+  details: string | null;
+  created_at: string;
 }
 
 export function fromDbAthlete(row: Record<string, unknown>): Athlete {
@@ -136,5 +149,7 @@ export function fromDbAthlete(row: Record<string, unknown>): Athlete {
     documento_url: row.documento_url as string | undefined,
     documento_status: row.documento_status as Athlete['documento_status'],
     avatar_url: row.avatar_url as string | undefined,
+    mora_months: (row.mora_months as number) || 0,
+    subscription_plan_id: row.subscription_plan_id as string | undefined,
   };
 }

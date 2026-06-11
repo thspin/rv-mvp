@@ -1,12 +1,19 @@
 'use client';
 
-import { Payment } from '@/lib/db';
+import { ActivityLog } from '@/lib/db';
 
 interface HistorialTabProps {
-  payments: Payment[];
+  logs: ActivityLog[];
 }
 
-export function HistorialTab({ payments }: HistorialTabProps) {
+export function HistorialTab({ logs }: HistorialTabProps) {
+  const categoryConfig: Record<ActivityLog['category'], { label: string; className: string }> = {
+    solicitudes: { label: 'Solicitud', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+    atletas: { label: 'Atleta', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' },
+    pagos: { label: 'Pago', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' },
+    aptos_medicos: { label: 'Apto Médico', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
+  };
+
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -14,39 +21,53 @@ export function HistorialTab({ payments }: HistorialTabProps) {
           <thead className="bg-muted">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Fecha</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Categoría</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Acción</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Atleta</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Monto</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Metodo</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Estado</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Detalles</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {payments.length === 0 ? (
+            {logs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                  No hay pagos registrados
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                  No hay acciones registradas en el historial
                 </td>
               </tr>
             ) : (
-              payments.map(payment => (
-                <tr key={payment.id}>
-                  <td className="px-4 py-3 text-sm text-foreground">
-                    {new Date(payment.created_at).toLocaleDateString("es-AR")}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-foreground">{payment.athlete_name}</td>
-                  <td className="px-4 py-3 text-sm text-foreground">${payment.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-foreground">{payment.method}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                      payment.status === "aprobado" 
-                        ? "bg-success/20 text-success" 
-                        : "bg-destructive/20 text-destructive"
-                    }`}>
-                      {payment.status}
-                    </span>
-                  </td>
-                </tr>
-              ))
+              logs.map(log => {
+                const category = categoryConfig[log.category] || { label: log.category, className: 'bg-muted text-muted-foreground' };
+                return (
+                  <tr key={log.id}>
+                    <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleString("es-AR", {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${category.className}`}>
+                        {category.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground capitalize">
+                      {log.action}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-foreground">
+                      <div>
+                        <p className="font-medium">{log.athlete_name || "-"}</p>
+                        {log.athlete_email && <p className="text-xs text-muted-foreground">{log.athlete_email}</p>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {log.details || "-"}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

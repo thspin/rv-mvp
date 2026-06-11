@@ -9,7 +9,7 @@ interface AtletasTabProps {
 
 function PaymentBadge({ status }: { status: string | null | undefined }) {
   const config: Record<string, { label: string; className: string }> = {
-    Pagado: { label: 'Pagado', className: 'bg-success/20 text-success' },
+    Pagado: { label: 'Al día', className: 'bg-success/20 text-success' },
     Pendiente_Pago: { label: 'Pendiente', className: 'bg-warning/20 text-warning' },
     Pendiente_Verificacion: { label: 'En revision', className: 'bg-primary/20 text-primary' },
     Vencido: { label: 'Vencido', className: 'bg-destructive/20 text-destructive' },
@@ -44,11 +44,11 @@ export function AtletasTab({ activeMembers, onExpel }: AtletasTabProps) {
         <table className="w-full">
           <thead className="bg-muted">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Atleta</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Teléfono</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Cuota</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-foreground">Apto</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-foreground">Acciones</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-foreground">Atleta</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-foreground">Teléfono</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-foreground">Suscripción</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-foreground">Apto</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-foreground">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -61,14 +61,14 @@ export function AtletasTab({ activeMembers, onExpel }: AtletasTabProps) {
             ) : (
               activeMembers.map(athlete => (
                 <tr key={athlete.id}>
-                  <td className="px-4 py-3 text-sm">
+                  <td className="px-4 py-3 text-sm text-center">
                     <p className="font-medium text-foreground">{athlete.name || "Sin nombre"}</p>
                   </td>
-                  <td className="px-4 py-3 text-sm text-foreground">{athlete.phone || "-"}</td>
-                  <td className="px-4 py-3 text-sm"><PaymentBadge status={athlete.payment_status} /></td>
-                  <td className="px-4 py-3 text-sm"><AptoBadge status={athlete.apto_medico_status} /></td>
-                  <td className="px-4 py-3 text-sm text-right">
-                    <div className="flex gap-2 justify-end">
+                  <td className="px-4 py-3 text-sm text-center text-foreground">{athlete.phone || "-"}</td>
+                  <td className="px-4 py-3 text-sm text-center"><PaymentBadge status={athlete.payment_status} /></td>
+                  <td className="px-4 py-3 text-sm text-center"><AptoBadge status={athlete.apto_medico_status} /></td>
+                  <td className="px-4 py-3 text-sm text-center">
+                    <div className="flex gap-2 justify-center">
                       <button
                         onClick={() => onExpel(athlete)}
                         className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 cursor-pointer"

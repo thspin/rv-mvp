@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS teams (
     founded_date TEXT,
     specialties TEXT,
     special_instructions TEXT,
-    google_maps_url TEXT
+    google_maps_url TEXT,
+    subscription_plans TEXT
 );
 
 -- 4. Crear tabla de Atletas (athletes)
@@ -114,7 +115,9 @@ CREATE TABLE IF NOT EXISTS athletes (
     domicilio TEXT,
     documento_url TEXT,
     documento_status TEXT CHECK (documento_status IN ('no_entregado', 'pendiente_verificacion', 'vigente', 'rechazado')) DEFAULT 'no_entregado',
-    avatar_url TEXT
+    avatar_url TEXT,
+    mora_months INTEGER DEFAULT 0,
+    subscription_plan_id TEXT
 );
 
 -- 5. Crear tabla de Pagos (payments)
@@ -174,3 +177,28 @@ ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 -- Paso 3: Agregar nueva FK
 -- ALTER TABLE athletes ADD CONSTRAINT athletes_user_id_fkey
 --   FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE;
+
+-- 6. Crear tabla de Notificaciones
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+
+-- 7. Crear tabla de Actividades (activity_logs)
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category TEXT NOT NULL,
+    action TEXT NOT NULL,
+    athlete_name TEXT,
+    athlete_email TEXT,
+    details TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE activity_logs DISABLE ROW LEVEL SECURITY;
