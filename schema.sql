@@ -76,7 +76,9 @@ CREATE TABLE IF NOT EXISTS teams (
     specialties TEXT,
     special_instructions TEXT,
     google_maps_url TEXT,
-    subscription_plans TEXT
+    subscription_plans TEXT,
+    bank_cbu TEXT,
+    bank_alias TEXT
 );
 
 -- 4. Crear tabla de Atletas (athletes)

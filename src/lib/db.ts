@@ -114,6 +114,8 @@ function fromDbTeam(row: Record<string, unknown>): Team {
     special_instructions: (row.special_instructions || '') as string,
     google_maps_url: (row.google_maps_url || '') as string,
     subscription_plans: (row.subscription_plans || '') as string,
+    bank_cbu: (row.bank_cbu || '') as string,
+    bank_alias: (row.bank_alias || '') as string,
   };
 }
 
@@ -131,7 +133,7 @@ function fromDbPayment(row: Record<string, unknown>): Payment {
 
 // =========== Column Projections ===========
 
-const TEAM_COLUMNS = 'id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url, founded_date, specialties, special_instructions, google_maps_url, subscription_plans';
+const TEAM_COLUMNS = 'id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url, founded_date, specialties, special_instructions, google_maps_url, subscription_plans, bank_cbu, bank_alias';
 const ATHLETE_COLUMNS = 'id, user_id, email, name, role, onboarding_complete, dni, phone, talle_remera, contacto_emergencia_name, contacto_emergencia_phone, grupo_sanguineo, alergias, afecciones, apto_medico_url, apto_medico_status, apto_medico_vencimiento, apto_medico_motivo_rechazo, team_id, team_status, payment_status, payment_receipt_url, payment_method, payment_motivo_rechazo, genero, fecha_nacimiento, tipo_documento, pais, provincia, ciudad, codigo_postal, domicilio, documento_url, documento_status, avatar_url, mora_months, subscription_plan_id';
 const PAYMENT_COLUMNS = 'id, athlete_email, athlete_name, amount, method, created_at, status';
 

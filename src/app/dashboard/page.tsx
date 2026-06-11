@@ -259,6 +259,18 @@ export default function AthleteDashboard() {
     });
   })();
 
+  const plans = (() => {
+    try {
+      return team?.subscription_plans ? JSON.parse(team.subscription_plans) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const athletePlan = plans.find((p: any) => p.id === user.subscription_plan_id) || plans[0] || { name: 'Individual', price: 17000 };
+  const planPrice = athletePlan.price;
+  const planName = athletePlan.name;
+
   return (
     <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(153,0,0,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
       <HeaderAlert user={user} />
@@ -663,7 +675,7 @@ export default function AthleteDashboard() {
                                 </div>
                                 <div className="min-w-0">
                                   <p className="text-slate-500 font-medium leading-none text-[10px]">CBU</p>
-                                  <p className="text-slate-900 font-bold tracking-tight truncate">0070012345678901234567</p>
+                                  <p className="text-slate-900 font-bold tracking-tight truncate">{team.bank_cbu || "0070012345678901234567"}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -672,14 +684,14 @@ export default function AthleteDashboard() {
                                 </div>
                                 <div className="min-w-0">
                                   <p className="text-slate-500 font-medium leading-none text-[10px]">Alias</p>
-                                  <p className="text-slate-900 font-bold">rv.entrenamientos.mp</p>
+                                  <p className="text-slate-900 font-bold">{team.bank_alias || "rv.entrenamientos.mp"}</p>
                                 </div>
                               </div>
                             </div>
                           </div>
                           <div className="sm:w-36 bg-gradient-to-br from-[#990000] to-[#fe0000] rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-red-200 block mb-1">Cuota</span>
-                            <p className="text-white font-black text-2xl leading-none">$17.000</p>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-red-200 block mb-1">Plan {planName}</span>
+                            <p className="text-white font-black text-2xl leading-none">${planPrice.toLocaleString("es-AR")}</p>
                             <span className="text-red-200 text-[10px] font-medium mt-1">/ mes</span>
                           </div>
                         </div>

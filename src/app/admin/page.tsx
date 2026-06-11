@@ -68,6 +68,8 @@ export default function AdminPage() {
     special_instructions: "", 
     google_maps_url: "",
     subscription_plans: "",
+    bank_cbu: "",
+    bank_alias: "",
   })
   const [expelConfirmOpen, setExpelConfirmOpen] = useState(false)
   const [pendingActionAthlete, setPendingActionAthlete] = useState<Athlete | null>(null)
@@ -103,7 +105,9 @@ export default function AdminPage() {
           subscription_plans: teamData.subscription_plans || JSON.stringify([
             { id: "individual", name: "Individual", price: 17000, description: "Acceso completo para un atleta individual" },
             { id: "familiar", name: "Familiar", price: 30000, description: "Acceso para el grupo familiar" }
-          ])
+          ]),
+          bank_cbu: teamData.bank_cbu || "",
+          bank_alias: teamData.bank_alias || "",
         })
       }
     }
@@ -399,6 +403,32 @@ export default function AdminPage() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-6 mt-6">
+                <h3 className="text-lg font-bold text-foreground mb-4">Datos para Transferencias Bancarias</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">CBU del Equipo</label>
+                    <input
+                      type="text"
+                      value={teamForm.bank_cbu}
+                      onChange={(e) => setTeamForm({ ...teamForm, bank_cbu: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm font-semibold"
+                      placeholder="Ej. 0070012345678901234567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Alias del Equipo</label>
+                    <input
+                      type="text"
+                      value={teamForm.bank_alias}
+                      onChange={(e) => setTeamForm({ ...teamForm, bank_alias: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm font-semibold"
+                      placeholder="Ej. rv.entrenamientos.mp"
+                    />
+                  </div>
                 </div>
               </div>
 

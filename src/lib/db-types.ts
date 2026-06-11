@@ -13,6 +13,8 @@ export interface Team {
   special_instructions?: string;
   google_maps_url?: string;
   subscription_plans?: string;
+  bank_cbu?: string;
+  bank_alias?: string;
 }
 
 export interface TrainingShift {
