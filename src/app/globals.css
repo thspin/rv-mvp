@@ -112,6 +112,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  button:not([disabled]) {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  button:not([disabled]):hover {
+    transform: scale(1.02);
+  }
+  button:not([disabled]):active {
+    transform: scale(0.98);
+  }
 }
 
 /* Custom scrollbars */
