@@ -129,6 +129,8 @@ RLS está **habilitado** en las tablas de aplicación (`teams`, `athletes`, `pay
 
 3.  **Commit & Push automático**: Después de cualquier cambio en el código, el agente debe hacer `git add -A`, `git commit` y `git push origin main` automáticamente para que Vercel despliegue.
 
+4.  **Despliegue manual de contingencia**: En caso de que el webhook de GitHub no dispare el despliegue automático en Vercel (o si no se actualiza después de unos minutos), el agente debe ejecutar `npx vercel --prod --yes` para forzar un despliegue directo a producción desde la terminal.
+
 ---
 
 ## Installed Skills
