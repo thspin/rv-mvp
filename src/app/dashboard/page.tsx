@@ -367,10 +367,10 @@ export default function AthleteDashboard() {
                   <p className="text-slate-400 text-sm font-medium">Contenido próximamente.</p>
                 </div>
               ) : activeDashboardTab === 'entrenamientos' ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start text-left">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-                  {/* COLUMNA IZQUIERDA (WIDER: 2/3 cols) */}
-                  <div className="md:col-span-2 space-y-6">
+                  {/* COLUMNA IZQUIERDA (2/3) */}
+                  <div className="lg:col-span-2 space-y-6">
 
                     {/* ENTRENAMIENTOS DIARIOS */}
                     <SectionCard spaceY="space-y-5">
@@ -460,7 +460,7 @@ export default function AthleteDashboard() {
                     </SectionCard>
                   </div>
 
-                  {/* COLUMNA DERECHA (NARROWER: 1/3 col) */}
+                  {/* COLUMNA DERECHA (1/3) */}
                   <div className="space-y-6">
                     {/* ENTRENAMIENTOS ESPECIALES (FONDOS DE FIN DE SEMANA) */}
                     <SectionCard spaceY="space-y-5">
@@ -523,22 +523,19 @@ export default function AthleteDashboard() {
 
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start text-left">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-                  {/* COLUMNA IZQUIERDA (WIDER: 2/3 cols) */}
-                  <div className="md:col-span-2 space-y-6">
+                  {/* COLUMNA IZQUIERDA (2/3) */}
+                  <div className="lg:col-span-2 space-y-6">
                     {/* PLAN DE SUSCRIPCIÓN Y PAGO */}
-                    <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm space-y-5 relative overflow-hidden flex flex-col justify-between">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-slate-50 to-transparent rounded-bl-full pointer-events-none" />
-                      <div className="space-y-4 relative z-10">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
-                          <h3 className={`${archivoFont.className} text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2`}>
-                            <DollarSign className="w-5 h-5 text-[#1e4e6d]" />
-                            Plan de Suscripción y Pago
-                          </h3>
-
-                          <StatusBadge status={user.payment_status} variant="payment" />
-                        </div>
+                    <SectionCard spaceY="space-y-5">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
+                        <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2`}>
+                          <DollarSign className="w-5 h-5 text-[#1e4e6d]" />
+                          Plan de Suscripción y Pago
+                        </h3>
+                        <StatusBadge status={user.payment_status} variant="payment" />
+                      </div>
 
                         {/* Bank Details Accent */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-150 p-4 rounded-2xl text-left text-xs">
@@ -577,7 +574,6 @@ export default function AthleteDashboard() {
                             <strong>Falta registrar pago:</strong> Reportá tu transferencia mensual.
                           </div>
                         )}
-                      </div>
 
                       {(user.payment_status === 'Pendiente_Pago' || user.payment_status === 'Vencido') && (
                         <form onSubmit={handleUploadReceipt} className="pt-3 border-t border-slate-100 space-y-2.5 relative z-10">
@@ -604,20 +600,17 @@ export default function AthleteDashboard() {
                           {uploadError && <p className="text-[10px] text-red-650 font-medium">{uploadError}</p>}
                         </form>
                       )}
-                    </div>
+                    </SectionCard>
 
                     {/* APTO FÍSICO */}
-                    <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm space-y-5 flex flex-col justify-between relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-slate-50 to-transparent rounded-bl-full pointer-events-none" />
-                      <div className="space-y-4 relative z-10">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
-                          <h3 className={`${archivoFont.className} text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2`}>
-                            <Heart className="w-5 h-5 text-red-500" />
-                            Apto Físico
-                          </h3>
-
-                          <StatusBadge status={user.apto_medico_status} variant="medical" />
-                        </div>
+                    <SectionCard spaceY="space-y-5">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
+                        <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2`}>
+                          <Heart className="w-5 h-5 text-red-500" />
+                          Apto Físico
+                        </h3>
+                        <StatusBadge status={user.apto_medico_status} variant="medical" />
+                      </div>
 
                         {user.apto_medico_status === 'vigente' && user.apto_medico_vencimiento && (
                           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed font-medium">
@@ -643,7 +636,6 @@ export default function AthleteDashboard() {
                             <span>Obligatorio para participar en entrenamientos presenciales.</span>
                           </div>
                         )}
-                      </div>
 
                       {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado') && (
                         <form onSubmit={handleUploadCert} className="pt-3 border-t border-slate-100 space-y-2.5 relative z-10">
@@ -670,15 +662,15 @@ export default function AthleteDashboard() {
                           {certError && <p className="text-[10px] text-red-655 font-medium">{certError}</p>}
                         </form>
                       )}
-                    </div>
+                    </SectionCard>
                   </div>
 
-                  {/* COLUMNA DERECHA (NARROWER: 1/3 col) */}
+                  {/* COLUMNA DERECHA (1/3) */}
                   <div className="space-y-6">
                     {/* CONTACTO ENTRENADOR */}
-                    <SectionCard padding="p-6" className="text-left" blobColor="emerald" blobSize="w-20 h-20" spaceY="space-y-4">
-                      <h3 className={`${archivoFont.className} text-sm font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <Users className="w-4 h-4 text-emerald-600" />
+                    <SectionCard spaceY="space-y-4">
+                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
+                        <Users className="w-5 h-5 text-emerald-600" />
                         Contacto Entrenador
                       </h3>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
@@ -698,9 +690,9 @@ export default function AthleteDashboard() {
                     </SectionCard>
 
                     {/* CUMPLEAÑOS DE LA SEMANA */}
-                    <SectionCard padding="p-6" className="text-left" blobColor="rose" blobSize="w-20 h-20" spaceY="space-y-4">
-                      <h3 className={`${archivoFont.className} text-sm font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
-                        <Heart className="w-4 h-4 text-rose-500" />
+                    <SectionCard spaceY="space-y-4">
+                      <h3 className={`${archivoFont.className} text-lg font-black text-slate-900 uppercase tracking-tight pb-3 border-b border-slate-100/80 flex items-center gap-2`}>
+                        <Heart className="w-5 h-5 text-rose-500" />
                         Cumpleaños de la Semana
                       </h3>
 
