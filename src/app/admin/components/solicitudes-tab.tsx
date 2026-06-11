@@ -12,13 +12,13 @@ interface SolicitudesTabProps {
 
 export function SolicitudesTab({ pendingSolicitudes, onAccept, onReject }: SolicitudesTabProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {pendingSolicitudes.length === 0 ? (
         <div className="col-span-full bg-card rounded-[24px] p-12 text-center border border-border">
           <p className="text-muted-foreground text-sm">No hay solicitudes pendientes</p>
         </div>
       ) : (
-        pendingSolicitudes.map(athlete => (
+        pendingSolicitudes.slice(0, 6).map(athlete => (
           <div key={athlete.id} className="bg-card rounded-[24px] p-6 border border-border flex flex-col items-center text-center justify-between shadow-sm hover:shadow-md transition-shadow duration-200">
             {/* Foto del atleta e información básica */}
             <div className="flex flex-col items-center space-y-4 w-full">
