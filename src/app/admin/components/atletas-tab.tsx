@@ -74,14 +74,14 @@ export function AtletasTab({ activeMembers, onManualPayment, onExpel }: AtletasT
                       {athlete.payment_status !== "Pagado" && athlete.payment_status !== "Pendiente_Verificacion" && (
                         <button
                           onClick={() => onManualPayment(athlete)}
-                          className="px-3 py-1 bg-success text-success-foreground rounded text-xs hover:opacity-90"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 cursor-pointer"
                         >
                           Pago manual
                         </button>
                       )}
                       <button
                         onClick={() => onExpel(athlete)}
-                        className="px-3 py-1 bg-destructive text-destructive-foreground rounded text-xs hover:opacity-90"
+                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 cursor-pointer"
                       >
                         Dar de baja
                       </button>

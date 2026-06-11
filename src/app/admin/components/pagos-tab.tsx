@@ -32,13 +32,13 @@ export function PagosTab({ pendingPagos, onApprove, onReject }: PagosTabProps) {
               <div className="flex gap-2">
                 <button
                   onClick={() => onApprove(athlete)}
-                  className="px-4 py-2 bg-success text-success-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold shadow-sm hover:shadow-md hover:shadow-emerald-500/15 transition-all duration-200 cursor-pointer"
                 >
                   Aprobar
                 </button>
                 <button
                   onClick={() => onReject(athlete)}
-                  className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-bold shadow-sm hover:shadow-md hover:shadow-rose-500/15 transition-all duration-200 cursor-pointer"
                 >
                   Rechazar
                 </button>
