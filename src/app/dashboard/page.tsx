@@ -13,6 +13,7 @@ import {
 } from '@/lib/db';
 import { parseTrainingDays, parseInstructions } from '@/lib/db-types';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useToast } from '@/components/ui/toast';
 import Navbar from '@/components/Navbar';
 import HeaderAlert from '@/components/HeaderAlert';
 import {
@@ -52,6 +53,7 @@ const archivoFont = Archivo({
 export default function AthleteDashboard() {
   const router = useRouter();
   const { user, isLoading: authLoading, authError } = useAuthGuard();
+  const { success } = useToast();
   const [team, setTeam] = useState<Team | null>(null);
   const parsedShifts = team ? parseTrainingDays(team.training_days) : null;
   const parsedInstructions = team ? parseInstructions(team.instructions) : null;
@@ -100,7 +102,7 @@ export default function AthleteDashboard() {
     if (!user) return;
     await leaveTeamAsync(user.email);
     if (leaveFeedback.trim()) {
-      alert('¡Muchas gracias por tu feedback! Nos ayuda a mejorar.');
+      success('¡Muchas gracias por tu feedback! Nos ayuda a mejorar.');
     }
     loadData();
   };

@@ -18,6 +18,7 @@ import {
   Payment,
 } from "@/lib/db"
 import { useAuthGuard } from "@/hooks/useAuthGuard"
+import { useToast } from "@/components/ui/toast"
 import { SolicitudesTab } from "./components/solicitudes-tab"
 import { AtletasTab } from "./components/atletas-tab"
 import { PagosTab } from "./components/pagos-tab"
@@ -35,6 +36,7 @@ import {
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuthGuard(false)
+  const { success, error } = useToast()
   const [dataLoading, setDataLoading] = useState(true)
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [team, setTeam] = useState<Team | null>(null)
@@ -184,9 +186,13 @@ export default function AdminPage() {
 
   async function handleSaveTeam() {
     if (!team) return
-    await updateTeam(team.id, teamForm)
-    await loadData()
-    alert("Equipo actualizado correctamente")
+    try {
+      await updateTeam(team.id, teamForm)
+      await loadData()
+      success("Equipo actualizado correctamente")
+    } catch (err) {
+      error("Error al actualizar el equipo")
+    }
   }
 
   if (authLoading || dataLoading) {
