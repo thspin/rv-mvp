@@ -377,12 +377,14 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <button
-                onClick={handleSaveTeam}
-                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
-              >
-                Guardar cambios
-              </button>
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={handleSaveTeam}
+                  className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:shadow-primary/25 active:scale-[0.98] cursor-pointer hover:bg-primary/95"
+                >
+                  Guardar cambios
+                </button>
+              </div>
             </div>
           </div>
         )}
