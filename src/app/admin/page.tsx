@@ -25,6 +25,14 @@ import { AtletasTab } from "./components/atletas-tab"
 import { PagosTab } from "./components/pagos-tab"
 import { AptosTab } from "./components/aptos-tab"
 import { HistorialTab } from "./components/historial-tab"
+import {
+  Users,
+  UserPlus,
+  CreditCard,
+  Stethoscope,
+  History,
+  Settings,
+} from "lucide-react"
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuthGuard(false)
@@ -316,7 +324,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-foreground mb-2">Panel de Administracion</h1>
         <p className="text-muted-foreground mb-6">{team?.name}</p>
 
@@ -340,34 +348,49 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6 border-b border-border pb-4">
-          {[
-            { id: "equipo", label: "Mi Equipo", count: 0 },
-            { id: "solicitudes", label: "Solicitudes", count: pendingSolicitudes.length },
-            { id: "atletas", label: "Atletas", count: activeMembers.length },
-            { id: "pagos", label: "Pagos", count: pendingPagos.length },
-            { id: "aptos", label: "Aptos Medicos", count: pendingAptos.length },
-            { id: "historial", label: "Historial", count: 0 }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-foreground/10">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Layout de Sidebar + Contenido */}
+        <div className="flex flex-col md:flex-row gap-6 items-start">
+          {/* Sidebar Menu */}
+          <aside className="w-full md:w-64 shrink-0 bg-card border border-border rounded-2xl p-4 space-y-1">
+            {[
+              { id: "equipo", label: "Mi Equipo", count: 0, icon: Settings },
+              { id: "solicitudes", label: "Solicitudes", count: pendingSolicitudes.length, icon: UserPlus },
+              { id: "atletas", label: "Atletas", count: activeMembers.length, icon: Users },
+              { id: "pagos", label: "Pagos", count: pendingPagos.length, icon: CreditCard },
+              { id: "aptos", label: "Aptos Medicos", count: pendingAptos.length, icon: Stethoscope },
+              { id: "historial", label: "Historial", count: 0, icon: History }
+            ].map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-4.5 h-4.5" />
+                    <span>{tab.label}</span>
+                  </div>
+                  {tab.count > 0 && (
+                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                      activeTab === tab.id
+                        ? "bg-white/20 text-white"
+                        : "bg-foreground/10 text-foreground"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </aside>
+
+          {/* Contenido Principal */}
+          <div className="flex-1 min-w-0 w-full">
 
         {/* Equipo Tab */}
         {activeTab === "equipo" && team && (
@@ -751,6 +774,8 @@ export default function AdminPage() {
           variant="destructive"
           onConfirm={confirmExpelAthlete}
         />
+          </div>
+        </div>
       </main>
     </div>
   )
