@@ -60,42 +60,77 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast, success, error, info }}>
       {children}
+      
+      {/* Estilos locales autocontenidos para animaciones premium */}
+      <style>{`
+        @keyframes toast-slide-in {
+          0% {
+            transform: translateY(1rem) scale(0.96);
+            opacity: 0;
+          }
+          100% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+        }
+        .toast-animate-in {
+          animation: toast-slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
+
       {/* Toast container */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4 sm:px-0">
         {toasts.map((t) => {
-          let bgColor = "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
-          let textColor = "text-zinc-900 dark:text-zinc-50"
-          let iconColor = "text-zinc-500"
+          let accentBarColor = "bg-blue-500"
+          let iconBgColor = "bg-blue-50 dark:bg-blue-950/40"
+          let iconColor = "text-blue-500 dark:text-blue-400"
           let Icon = Info
+          let typeTitle = t.title || "Aviso"
 
           if (t.type === "success") {
-            bgColor = "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50"
-            textColor = "text-emerald-900 dark:text-emerald-200"
+            accentBarColor = "bg-emerald-500"
+            iconBgColor = "bg-emerald-50 dark:bg-emerald-950/40"
             iconColor = "text-emerald-500 dark:text-emerald-400"
             Icon = CheckCircle
+            typeTitle = t.title || "Éxito"
           } else if (t.type === "error") {
-            bgColor = "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50"
-            textColor = "text-red-900 dark:text-red-200"
+            accentBarColor = "bg-[#990000]"
+            iconBgColor = "bg-red-50 dark:bg-red-950/40"
             iconColor = "text-[#990000] dark:text-red-400"
             Icon = AlertCircle
+            typeTitle = t.title || "Error"
           }
 
           return (
             <div
               key={t.id}
-              className={`flex items-start gap-3 p-4 rounded-2xl border shadow-lg pointer-events-auto transition-all duration-300 animate-in slide-in-from-bottom-5 fade-in duration-300 ${bgColor}`}
+              className="toast-animate-in flex items-stretch bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] pointer-events-auto overflow-hidden transition-all duration-300 w-full"
             >
-              <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${iconColor}`} />
-              <div className="flex-1 min-w-0">
-                {t.title && <h4 className={`text-xs font-bold ${textColor} mb-0.5`}>{t.title}</h4>}
-                <p className="text-xs font-medium opacity-90 leading-relaxed text-zinc-700 dark:text-zinc-300">{t.message}</p>
+              {/* Barra de Acento Izquierda */}
+              <div className={`w-1.5 shrink-0 ${accentBarColor}`} />
+              
+              {/* Contenido Interno */}
+              <div className="flex-1 p-4 flex gap-3 items-start">
+                <div className={`shrink-0 p-1.5 rounded-lg ${iconBgColor}`}>
+                  <Icon className={`w-4 h-4 ${iconColor}`} />
+                </div>
+                
+                <div className="flex-1 min-w-0 pr-2">
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-50 tracking-tight leading-none mb-1">
+                    {typeTitle}
+                  </h4>
+                  <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                    {t.message}
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => removeToast(t.id)}
+                  className="shrink-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button
-                onClick={() => removeToast(t.id)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 p-0.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           )
         })}
