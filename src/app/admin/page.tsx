@@ -338,7 +338,7 @@ export default function AdminPage() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Especialidades del equipo</label>
                 <div className="flex flex-wrap gap-2">
-                  {['Trail Running', 'Ultra Trail', 'Ruta / Calle', 'Funcional', 'Trekking', 'Aventura', 'Crossfit', 'Ciclismo'].map((spec) => {
+                  {['Running', 'Trail Running', 'Ultra Trail', 'Trekking', 'Funcional', 'Ciclismo'].map((spec) => {
                     const currentSpecs = teamForm.specialties ? teamForm.specialties.split(',').map(s => s.trim()).filter(Boolean) : [];
                     const isSelected = currentSpecs.includes(spec);
                     return (
