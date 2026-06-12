@@ -3,11 +3,20 @@ import { gzipSync } from 'zlib'
 import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/service'
 
+// Tables that go into the daily backup dump. Excluded by design:
+//   - session:   Better Auth session tokens. Backing them up means a
+//                stolen backup file grants access until the session
+//                expires (and the absolute worst case would be forever,
+//                because session rows aren't auto-pruned). Recovery
+//                path: users log in again. No data loss.
+//   - account:   OAuth provider tokens (Google refresh tokens).
+//                Same reasoning: a stolen backup file is enough to
+//                impersonate a user against Google. Recovery: revoke
+//                + re-authorise the OAuth connection.
+//   - verification: short-lived email verification tokens. Same
+//                reasoning. Expire on their own.
 const TABLAS = [
   'user',
-  'account',
-  'session',
-  'verification',
   'teams',
   'athletes',
   'payments',
