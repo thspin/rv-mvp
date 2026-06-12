@@ -21,7 +21,7 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl || undefined,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : false,
 });
 
 const getBaseURL = (): string => {
