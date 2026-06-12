@@ -439,8 +439,25 @@ export default function AthleteDashboard() {
                         <div className="space-y-2.5">
                           {birthdaysThisWeek.map(member => (
                             <div key={member.id} className="flex items-center gap-3 bg-gradient-to-r from-violet-50/70 to-purple-50/40 p-3 rounded-xl border border-violet-100/60">
-                              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xs uppercase shadow-sm">
-                                {member.name ? member.name[0] : '🎂'}
+                              <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-violet-100 flex items-center justify-center bg-gradient-to-br from-violet-500 to-purple-600 text-white font-extrabold text-xs uppercase shadow-sm flex-shrink-0">
+                                {member.avatar_url ? (
+                                  <Image
+                                    src={
+                                      member.avatar_url.startsWith('http://') ||
+                                      member.avatar_url.startsWith('https://') ||
+                                      member.avatar_url.startsWith('data:')
+                                        ? member.avatar_url
+                                        : `/api/storage/avatars?filename=${member.avatar_url}`
+                                    }
+                                    alt={member.name || "Avatar"}
+                                    fill
+                                    sizes="36px"
+                                    className="object-cover"
+                                    unoptimized={member.avatar_url.includes("googleusercontent.com")}
+                                  />
+                                ) : (
+                                  member.name ? member.name[0] : '🎂'
+                                )}
                               </div>
                               <div className="text-left min-w-0 flex-1">
                                 <p className="text-xs font-bold text-slate-800 leading-none truncate">{member.name}</p>
