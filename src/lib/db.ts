@@ -420,26 +420,79 @@ export async function leaveTeamAndReturnAsync(email: string): Promise<Athlete | 
   return await getCurrentUserAction();
 }
 
-export async function uploadPaymentReceiptAsync(email: string, receiptName: string): Promise<void> {
-  const session = await requireSession()
-  const rl = await rateLimitAction(session.user.id, 'uploadReceipt', 10, '5 m')
-  if (!rl.success) throw new Error(rl.error)
-  await updateAthleteProfileAsync(email, {
-    payment_status: 'Pendiente_Verificacion',
-    payment_receipt_url: receiptName,
-    payment_motivo_rechazo: undefined,
-  });
+export async function uploadPaymentReceiptAsync(email: string, receiptName: string): Promise<MutationResult> {
+  try {
+    const session = await requireSession()
+    const rl = await rateLimitAction(session.user.id, 'uploadReceipt', 10, '5 m')
+    if (!rl.success) throw new Error(rl.error)
+    assertFilenameOwnership(session.user.email, receiptName, 'receipt')
+    await updateAthleteProfileAsync(email, {
+      payment_status: 'Pendiente_Verificacion',
+      payment_receipt_url: receiptName,
+      payment_motivo_rechazo: undefined,
+    });
+    return ok()
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { source: 'db.uploadPaymentReceiptAsync' },
+      extra: { email, receiptName },
+    })
+    return fail(String(err), 'UNKNOWN')
+  }
 }
 
-export async function uploadMedicalCertificateAsync(email: string, certName: string): Promise<void> {
-  const session = await requireSession()
-  const rl = await rateLimitAction(session.user.id, 'uploadMedicalCert', 10, '5 m')
-  if (!rl.success) throw new Error(rl.error)
-  await updateAthleteProfileAsync(email, {
-    apto_medico_status: 'pendiente_verificacion',
-    apto_medico_url: certName,
-    apto_medico_motivo_rechazo: undefined,
-  });
+export async function uploadMedicalCertificateAsync(email: string, certName: string): Promise<MutationResult> {
+  try {
+    const session = await requireSession()
+    const rl = await rateLimitAction(session.user.id, 'uploadMedicalCert', 10, '5 m')
+    if (!rl.success) throw new Error(rl.error)
+    assertFilenameOwnership(session.user.email, certName, 'cert')
+    await updateAthleteProfileAsync(email, {
+      apto_medico_status: 'pendiente_verificacion',
+      apto_medico_url: certName,
+      apto_medico_motivo_rechazo: undefined,
+    });
+    return ok()
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { source: 'db.uploadMedicalCertificateAsync' },
+      extra: { email, certName },
+    })
+    return fail(String(err), 'UNKNOWN')
+  }
+}
+
+function safeEmailForFilename(email: string | null | undefined): string {
+  return (email || 'unknown').replace(/[@.]/g, '_')
+}
+
+/**
+ * Reject uploads whose filename does not start with the safe version of
+ * the session user's email. The /api/storage/upload route generates
+ * filenames like `<safeEmail>_<timestamp>_<random>.ext`, so a filename
+ * whose prefix is the caller's own email is the only one the caller
+ * legitimately owns. This closes an IDOR: a user used to be able to
+ * pass any athlete's email here and have their uploaded file linked to
+ * the other athlete's record.
+ *
+ * Throws if the filename is not a string, contains path traversal, or
+ * does not start with `<safeEmail>_`.
+ */
+export function assertFilenameOwnership(
+  userEmail: string | null | undefined,
+  filename: unknown,
+  kind: 'receipt' | 'cert',
+): asserts filename is string {
+  if (typeof filename !== 'string' || filename.length === 0) {
+    throw new Error(`Invalid ${kind} filename: must be a non-empty string`)
+  }
+  if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+    throw new Error(`Invalid ${kind} filename: path traversal not allowed`)
+  }
+  const expectedPrefix = `${safeEmailForFilename(userEmail)}_`
+  if (!filename.startsWith(expectedPrefix)) {
+    throw new Error(`Forbidden: ${kind} filename does not match session user`)
+  }
 }
 
 // =========== Admin Operations ===========
