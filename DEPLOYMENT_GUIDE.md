@@ -24,6 +24,9 @@ VERCEL_URL=<automático en Vercel>
 
 # NUNCA setear en Vercel (solo .env.local)
 ENABLE_DEBUG_ENDPOINT=true  # SOLO desarrollo local - NUNCA en Vercel
+
+# Cron Jobs (requerido en Vercel)
+CRON_SECRET=<generar con: openssl rand -hex 32>  # Debe coincidir con el header de autorizacion del cron
 ```
 
 **Para generar BETTER_AUTH_SECRET:**

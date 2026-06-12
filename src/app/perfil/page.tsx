@@ -552,6 +552,39 @@ export default function PerfilPage() {
             </div>
           </div>
         )}
+
+        {user.apto_medico_status === 'vencido' && (
+          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-800 flex items-start gap-2.5">
+            <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <strong className="block font-bold">Apto medico vencido</strong>
+              <p className="text-red-700 mt-0.5">Tu certificado medico ha vencido. Subi uno nuevo desde el dashboard para poder continuar entrenando.</p>
+            </div>
+          </div>
+        )}
+
+        {user.apto_medico_status === 'vigente' && user.apto_medico_vencimiento && (() => {
+          const daysLeft = Math.ceil((new Date(user.apto_medico_vencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          if (daysLeft > 0 && daysLeft <= 15) {
+            const isCritical = daysLeft <= 7
+            return (
+              <div className={`p-4 border rounded-2xl text-sm flex items-start gap-2.5 ${
+                isCritical ? 'bg-red-50 border-red-100 text-red-800' : 'bg-amber-50 border-amber-100 text-amber-800'
+              }`}>
+                <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isCritical ? 'text-red-600' : 'text-amber-600'}`} />
+                <div>
+                  <strong className="block font-bold">
+                    {isCritical ? `Vence en ${daysLeft} dias` : `Proximo a vencer en ${daysLeft} dias`}
+                  </strong>
+                  <p className={isCritical ? 'text-red-700 mt-0.5' : 'text-amber-700 mt-0.5'}>
+                    Tu certificado vence el {new Date(user.apto_medico_vencimiento).toLocaleDateString('es-AR')}. Renova con tiempo desde el dashboard.
+                  </p>
+                </div>
+              </div>
+            )
+          }
+          return null
+        })()}
       </div>
     </div>
   );

@@ -840,3 +840,48 @@ export async function condonePaymentAsync(email: string, name: string): Promise<
     );
   }
 }
+
+export async function checkUpcomingExpirations(): Promise<{
+  notified30: number
+  notified15: number
+  notified7: number
+  expired: number
+}> {
+  const supabase = createServiceClient()
+  const now = new Date()
+
+  const { data: active } = await supabase
+    .from('athletes')
+    .select('id, user_id, name, email, apto_medico_vencimiento')
+    .eq('apto_medico_status', 'vigente')
+
+  if (!active?.length) return { notified30: 0, notified15: 0, notified7: 0, expired: 0 }
+
+  let notified30 = 0, notified15 = 0, notified7 = 0, expired = 0
+
+  for (const a of active) {
+    if (!a.apto_medico_vencimiento || !a.user_id) continue
+
+    const expDate = new Date(a.apto_medico_vencimiento)
+    const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    const expStr = expDate.toLocaleDateString('es-AR')
+
+    if (daysLeft <= 0) {
+      await supabase.from('athletes').update({ apto_medico_status: 'vencido' }).eq('id', a.id)
+      await createNotification(a.user_id, 'Apto medico vencido', `Tu certificado vencio el ${expStr}. Subi uno nuevo.`)
+      await logActivityAsync('aptos_medicos', 'vencido', a.name, a.email, `Vencio el ${expStr}`)
+      expired++
+    } else if (daysLeft <= 7) {
+      await createNotification(a.user_id, 'Apto medico por vencer', `Tu certificado vence en ${daysLeft} dias (${expStr}).`)
+      notified7++
+    } else if (daysLeft <= 15) {
+      await createNotification(a.user_id, 'Apto medico proximo a vencer', `Tu certificado vence el ${expStr}. Quedan ${daysLeft} dias.`)
+      notified15++
+    } else if (daysLeft <= 30) {
+      await createNotification(a.user_id, 'Renova tu apto medico', `Tu certificado vence el ${expStr}. Renovalo con tiempo.`)
+      notified30++
+    }
+  }
+
+  return { notified30, notified15, notified7, expired }
+}

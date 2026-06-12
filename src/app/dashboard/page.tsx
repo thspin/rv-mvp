@@ -628,56 +628,106 @@ export default function AthleteDashboard() {
                       </div>
 
                       <div className="px-6 sm:px-8 py-6 space-y-5">
-                        {user.apto_medico_status === 'vigente' && user.apto_medico_vencimiento && (
-                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                              <Shield className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <div className="text-xs text-emerald-800 font-medium leading-relaxed">
-                              Válido hasta: <strong className="text-emerald-950">{new Date(user.apto_medico_vencimiento).toLocaleDateString("es-AR")}</strong>.
-                            </div>
-                          </div>
-                        )}
+                        {(() => {
+                          const expDate = user.apto_medico_vencimiento ? new Date(user.apto_medico_vencimiento) : null
+                          const daysLeft = expDate ? Math.ceil((expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null
 
-                        {user.apto_medico_status === 'pendiente_verificacion' && (
-                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200">
-                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                              <Clock className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div className="text-xs text-blue-800 font-medium">
-                              Comprobante médico subido. Esperando validación.
-                            </div>
-                          </div>
-                        )}
+                          if (user.apto_medico_status === 'vencido') {
+                            return (
+                              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-50 border border-red-200">
+                                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                                </div>
+                                <div className="text-xs text-red-800 font-medium leading-relaxed">
+                                  <strong>Apto medico vencido.</strong> Subi un certificado nuevo para continuar entrenando.
+                                </div>
+                              </div>
+                            )
+                          }
 
-                        {user.apto_medico_status === 'rechazado' && (
-                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-50 border border-red-200">
-                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                              <AlertTriangle className="w-4 h-4 text-red-600" />
-                            </div>
-                            <div className="text-xs text-red-800 font-medium leading-relaxed">
-                              <strong>Rechazado:</strong> {user.apto_medico_motivo_rechazo || 'Documento no válido.'}
-                            </div>
-                          </div>
-                        )}
+                          if (user.apto_medico_status === 'vigente' && expDate && daysLeft !== null) {
+                            const isCritical = daysLeft <= 7
+                            const isWarning = daysLeft > 7 && daysLeft <= 15
 
-                        {user.apto_medico_status === 'no_entregado' && (
-                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
-                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                              <AlertTriangle className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <div className="text-xs text-amber-800 font-medium leading-relaxed">
-                              Obligatorio para participar en entrenamientos presenciales.
-                            </div>
-                          </div>
-                        )}
+                            return (
+                              <div className={`flex items-center gap-3 p-3.5 rounded-xl border ${
+                                isCritical ? 'bg-red-50 border-red-200' :
+                                isWarning ? 'bg-amber-50 border-amber-200' :
+                                'bg-emerald-50 border-emerald-200'
+                              }`}>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  isCritical ? 'bg-red-100' :
+                                  isWarning ? 'bg-amber-100' :
+                                  'bg-emerald-100'
+                                }`}>
+                                  {isCritical ? <AlertTriangle className="w-4 h-4 text-red-600" /> :
+                                   isWarning ? <AlertTriangle className="w-4 h-4 text-amber-600" /> :
+                                   <Shield className="w-4 h-4 text-emerald-600" />}
+                                </div>
+                                <div className={`text-xs font-medium leading-relaxed ${
+                                  isCritical ? 'text-red-800' :
+                                  isWarning ? 'text-amber-800' :
+                                  'text-emerald-800'
+                                }`}>
+                                  {isCritical ? (
+                                    <><strong>Vence en {daysLeft} dias</strong> ({expDate.toLocaleDateString("es-AR")}). Renova urgentemente.</>
+                                  ) : isWarning ? (
+                                    <><strong>Vence en {daysLeft} dias</strong> ({expDate.toLocaleDateString("es-AR")}). Renova con tiempo.</>
+                                  ) : (
+                                    <>Valido hasta: <strong>{expDate.toLocaleDateString("es-AR")}</strong>.</>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          }
 
-                        {/* Upload form */}
-                        {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado') && (
+                          if (user.apto_medico_status === 'pendiente_verificacion') {
+                            return (
+                              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200">
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                  <Clock className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="text-xs text-blue-800 font-medium">
+                                  Comprobante medico subido. Esperando validacion.
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          if (user.apto_medico_status === 'rechazado') {
+                            return (
+                              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-50 border border-red-200">
+                                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                                </div>
+                                <div className="text-xs text-red-800 font-medium leading-relaxed">
+                                  <strong>Rechazado:</strong> {user.apto_medico_motivo_rechazo || 'Documento no valido.'}
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          if (user.apto_medico_status === 'no_entregado') {
+                            return (
+                              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div className="text-xs text-amber-800 font-medium leading-relaxed">
+                                  Obligatorio para participar en entrenamientos presenciales.
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          return null
+                        })()}
+
+                        {(user.apto_medico_status === 'no_entregado' || user.apto_medico_status === 'rechazado' || user.apto_medico_status === 'vencido') && (
                           <form onSubmit={handleUploadCert} className="pt-4 border-t border-slate-100 space-y-3 relative z-10">
                             <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
                               <Upload className="w-3 h-3" />
-                              Cargar apto médico
+                              Cargar apto medico
                             </label>
                             <div className="flex flex-col sm:flex-row gap-2">
                               <input

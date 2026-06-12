@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS athletes (
     alergias TEXT,
     afecciones TEXT,
     apto_medico_url TEXT,
-    apto_medico_status TEXT CHECK (apto_medico_status IN ('no_entregado', 'pendiente_verificacion', 'vigente', 'rechazado')) DEFAULT 'no_entregado',
+    apto_medico_status TEXT CHECK (apto_medico_status IN ('no_entregado', 'pendiente_verificacion', 'vigente', 'rechazado', 'vencido')) DEFAULT 'no_entregado',
     apto_medico_vencimiento TIMESTAMPTZ,
     apto_medico_motivo_rechazo TEXT,
     team_id UUID REFERENCES teams(id) ON DELETE SET NULL,

@@ -64,6 +64,8 @@ export default function AdminPage() {
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
   const [modalType, setModalType] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [approveExpiration, setApproveExpiration] = useState("")
+  const [approvePreset, setApprovePreset] = useState("6meses")
   const [teamForm, setTeamForm] = useState({ 
     name: "", 
     logo_url: "", 
@@ -139,6 +141,14 @@ export default function AdminPage() {
   const pendingAptos = athletes.filter(a => a.apto_medico_status === "pendiente_verificacion")
   const pendingPagos = athletes.filter(a => a.team_status === "activo" && a.payment_status !== "Pagado")
 
+  const upcomingAptos = athletes.filter(a => {
+    if (a.apto_medico_status !== "vigente" || !a.apto_medico_vencimiento) return false
+    const daysLeft = Math.ceil((new Date(a.apto_medico_vencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    return daysLeft <= 30 && daysLeft > 0
+  })
+
+  const expiredAptos = athletes.filter(a => a.apto_medico_status === "vencido")
+
   const handleToggleSpecialty = (specialty: string) => {
     const current = teamForm.specialties
       ? teamForm.specialties.split(',').map(s => s.trim()).filter(Boolean)
@@ -191,12 +201,47 @@ export default function AdminPage() {
     await loadData()
   }
 
-  async function handleApproveApto(athlete: Athlete) {
-    const vencimiento = new Date()
-    vencimiento.setFullYear(vencimiento.getFullYear() + 1)
-    await updateAthleteAptoStatus(athlete.email, "vigente", vencimiento.toISOString())
+  function calcExpirationFromPreset(preset: string): string {
+    const d = new Date()
+    switch (preset) {
+      case '3meses': d.setMonth(d.getMonth() + 3); break
+      case '6meses': d.setMonth(d.getMonth() + 6); break
+      case '1año': d.setFullYear(d.getFullYear() + 1); break
+      default: return approveExpiration
+    }
+    return d.toISOString().split('T')[0]
+  }
+
+  function handleOpenApproveModal(athlete: Athlete) {
+    setSelectedAthlete(athlete)
+    setModalType("approveApto")
+    setApprovePreset("6meses")
+    const d = new Date()
+    d.setMonth(d.getMonth() + 6)
+    setApproveExpiration(d.toISOString().split('T')[0])
+  }
+
+  function handlePresetChange(preset: string) {
+    setApprovePreset(preset)
+    if (preset !== "personalizado") {
+      const d = new Date()
+      switch (preset) {
+        case '3meses': d.setMonth(d.getMonth() + 3); break
+        case '6meses': d.setMonth(d.getMonth() + 6); break
+        case '1año': d.setFullYear(d.getFullYear() + 1); break
+      }
+      setApproveExpiration(d.toISOString().split('T')[0])
+    }
+  }
+
+  async function handleApproveApto() {
+    if (!selectedAthlete || !approveExpiration) return
+    const vencimiento = new Date(approveExpiration + 'T23:59:59')
+    await updateAthleteAptoStatus(selectedAthlete.email, "vigente", vencimiento.toISOString())
     setModalType(null)
     setSelectedAthlete(null)
+    setApproveExpiration("")
+    setApprovePreset("6meses")
     await loadData()
   }
 
@@ -637,7 +682,9 @@ export default function AdminPage() {
         {activeTab === "aptos" && (
           <AptosTab
             pendingAptos={pendingAptos}
-            onApprove={handleApproveApto}
+            upcomingAptos={upcomingAptos}
+            expiredAptos={expiredAptos}
+            onApprove={handleOpenApproveModal}
             onReject={(athlete) => { setSelectedAthlete(athlete); setModalType("rejectApto") }}
           />
         )}
@@ -675,6 +722,78 @@ export default function AdminPage() {
                   className="flex-1 py-2 bg-destructive text-destructive-foreground rounded-xl font-medium hover:opacity-90 transition-opacity animate-in duration-200"
                 >
                   Confirmar rechazo
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de aprobacion apto */}
+        {modalType === "approveApto" && selectedAthlete && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-card rounded-xl p-6 w-full max-w-md border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Aprobar apto medico</h3>
+              <p className="text-sm text-muted-foreground mb-4">Atleta: {selectedAthlete.name}</p>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Valido por:</label>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[
+                    { id: '3meses', label: '3 meses' },
+                    { id: '6meses', label: '6 meses' },
+                    { id: '1año', label: '1 año' },
+                    { id: 'personalizado', label: 'Personalizado' },
+                  ].map(preset => (
+                    <button
+                      key={preset.id}
+                      onClick={() => handlePresetChange(preset.id)}
+                      className={`px-2 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        approvePreset === preset.id
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-border hover:bg-muted'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-1">Fecha de vencimiento:</label>
+                <input
+                  type="date"
+                  value={approveExpiration}
+                  onChange={(e) => { setApproveExpiration(e.target.value); setApprovePreset('personalizado') }}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {selectedAthlete.apto_medico_url && (
+                <a
+                  href={`/api/storage/medical-certs?filename=${selectedAthlete.apto_medico_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline mb-4 block"
+                >
+                  Ver certificado medico
+                </a>
+              )}
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => { setModalType(null); setSelectedAthlete(null); setApproveExpiration(""); setApprovePreset("6meses") }}
+                  className="flex-1 py-2 bg-muted text-foreground rounded-xl font-medium hover:opacity-90 transition-opacity animate-in duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleApproveApto}
+                  disabled={!approveExpiration}
+                  className="flex-1 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity animate-in duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirmar
                 </button>
               </div>
             </div>

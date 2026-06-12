@@ -70,7 +70,7 @@ export interface Athlete {
   alergias?: string;
   afecciones?: string;
   apto_medico_url?: string;
-  apto_medico_status?: 'no_entregado' | 'pendiente_verificacion' | 'vigente' | 'rechazado';
+  apto_medico_status?: 'no_entregado' | 'pendiente_verificacion' | 'vigente' | 'rechazado' | 'vencido';
   apto_medico_vencimiento?: string;
   apto_medico_motivo_rechazo?: string;
   team_id?: string | null;

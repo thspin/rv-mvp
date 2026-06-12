@@ -27,6 +27,7 @@ function AptoBadge({ status }: { status: string | null | undefined }) {
     vigente: { label: 'Vigente', className: 'bg-success/20 text-success' },
     pendiente_verificacion: { label: 'En revision', className: 'bg-primary/20 text-primary' },
     rechazado: { label: 'Rechazado', className: 'bg-destructive/20 text-destructive' },
+    vencido: { label: 'Vencido', className: 'bg-destructive/20 text-destructive' },
     no_entregado: { label: 'No entregado', className: 'bg-muted text-muted-foreground' },
   };
   const entry = status ? config[status] : undefined;

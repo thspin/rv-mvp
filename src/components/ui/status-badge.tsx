@@ -20,6 +20,7 @@ const medicalConfig: Record<string, { label: string; className: string }> = {
   vigente:                 { label: 'Vigente',   className: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
   pendiente_verificacion:  { label: 'Revisión',  className: 'bg-blue-50 border-blue-200 text-blue-700' },
   rechazado:               { label: 'Rechazado', className: 'bg-red-50 border-red-200 text-red-700' },
+  vencido:                 { label: 'Vencido',   className: 'bg-red-50 border-red-200 text-red-700' },
   no_entregado:            { label: 'Falta',     className: 'bg-amber-50 border-amber-200 text-amber-700' },
 };
 
