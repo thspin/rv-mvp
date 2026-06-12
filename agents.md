@@ -9,13 +9,14 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 *   **Framework**: Next.js 16 (App Router).
 *   **Styling**: Tailwind CSS v4 & shadcn/ui.
 *   **Auth**: Better Auth (Google OAuth) — configuración en [auth.ts](file:///src/lib/auth.ts) y [auth-client.ts](file:///src/lib/auth-client.ts).
-*   **Database**: Supabase PostgreSQL (RLS habilitado, autorización en capa de aplicación con service role).
+*   **Database**: Supabase PostgreSQL (RLS habilitado con políticas por usuario, JWT custom firmado con Supabase JWT Secret).
 *   **Storage**: Supabase Storage (uploads vía `/api/storage/upload` con validaciones).
-*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando service role client. Tipos en [db-types.ts](file:///src/lib/db-types.ts).
+*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando `createAuthenticatedClient(userId)` para operaciones con RLS y `createServiceClient()` solo para operaciones del sistema (notificaciones, logs). Tipos en [db-types.ts](file:///src/lib/db-types.ts).
 *   **Server Actions**: [actions.ts](file:///src/lib/actions.ts) para operaciones que requieren sesión de Better Auth.
 *   **Icons**: Lucide React.
 *   **Utility**: `cn()` (clsx + tailwind-merge) for class composition.
 *   **Images**: `next/image` para optimización automática (AVIF/WebP).
+*   **Testing**: Vitest (unit + integration), Playwright (E2E). Config en `vitest.config.ts` y `playwright.config.ts`.
 
 ---
 
@@ -35,7 +36,8 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
     *   `actions.ts`: Server actions that require Better Auth session (e.g., `getCurrentUserAction`).
     *   `db.ts`: All database transactions (Teams, Athletes, Payments). **Always modify database queries here, not inside client pages.**
     *   `supabase/client.ts`: Browser anon client (solo para Storage uploads).
-    *   `supabase/service.ts`: Server-side service role client (para API routes y server actions).
+    *   `supabase/service.ts`: Server-side service role client (solo para operaciones del sistema: createNotification, logActivityAsync).
+    *   `supabase/authenticated.ts`: Server-side authenticated client que firma JWT custom con SUPABASE_JWT_SECRET para que RLS use `auth.uid()` del Better Auth user.
 *   **`proxy.ts`**: Next.js 16 proxy (reemplaza middleware.ts) — protección de rutas con `getSessionCookie`.
 *   **`schema.sql`**: Database structure including Better Auth tables (user, session, account, verification) and application tables. If you modify database fields or add tables, update this file too.
 
@@ -45,18 +47,44 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 
 La autenticación se maneja con **Better Auth** (Google OAuth). Las sesiones se validan con `auth.api.getSession()` en el servidor.
 
-RLS está **habilitado** en las tablas de aplicación (`teams`, `athletes`, `payments`). La autorización se maneja en la capa de aplicación:
-*   El anon key del browser se usa solo para Storage uploads (a través del upload route handler).
-*   Las queries de `db.ts` usan el service role client (bypassa RLS).
-*   Las operaciones privilegiadas (descarga de archivos, server actions) usan el service role client.
-*   La descarga de archivos verifica ownership del archivo antes de servirlo.
+RLS está **habilitado** en todas las tablas de aplicación (`teams`, `athletes`, `payments`, `notifications`, `activity_logs`) con políticas que usan `auth.uid()` del JWT custom firmado con `SUPABASE_JWT_SECRET`.
+
+### Arquitectura de clientes Supabase
+
+```
+db.ts
+├── createAuthenticatedClient(userId)  ← JWT custom firmado con Supabase JWT Secret
+│   └── RLS policies usan auth.uid() que retorna el Better Auth user ID
+│   └── Para operaciones del propio usuario (leer/perfil, actualizar, notificaciones)
+│
+└── createServiceClient()              ← SOLO para:
+    ├── createNotification (inserta para otros usuarios)
+    └── logActivityAsync (inserta logs del sistema)
+```
+
+### Variables de entorno requeridas
+- `SUPABASE_JWT_SECRET` — JWT Secret de Supabase (Dashboard > Settings > API > JWT Secret)
+- `NEXT_PUBLIC_SUPABASE_URL` — URL del proyecto Supabase
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Anon key pública
+- `SUPABASE_SERVICE_ROLE_KEY` — Service role key (solo para createNotification y logActivityAsync)
+
+### Políticas RLS
+- **teams**: Lectura para authenticated, solo admin puede modificar
+- **athletes**: Ver/actualizar tu perfil o ser admin; crear solo tu registro; solo admin elimina
+- **payments**: Ver tus pagos o ser admin; solo admin inserta/modifica/elimina
+- **notifications**: Ver/actualizar solo tus notificaciones; admin puede insertar
+- **activity_logs**: Solo admin lee e inserta
+
+### Función helper is_admin()
+`is_admin(check_user_id TEXT)` — `SECURITY DEFINER` con `SET search_path = ''` para evitar recursión infinita en políticas RLS.
 
 **Rules for AI Assistants:**
 1.  Para verificar sesión de usuario, usar `getCurrentUserAction()` de `@/lib/actions` (server action) o `authClient.useSession()` de `@/lib/auth-client` (client hook).
-2.  Si una operación requiere elevated privileges (como descargar archivos), implementar via API route o Server Action usando `createServiceClient()` de `@/lib/supabase/service`.
+2.  Para operaciones de base de datos en `db.ts`, usar `createAuthenticatedClient(session.user.id)` — NUNCA `createServiceClient()` excepto para `createNotification` y `logActivityAsync`.
 3.  No usar `@supabase/ssr` — fue reemplazado por Better Auth.
 4.  **Todos los uploads deben pasar por `/api/storage/upload`** — nunca subir directamente con el anon client desde el browser.
 5.  **db.ts tiene `'use server'`** — todas las funciones son server actions. Tipos y funciones puras están en `db-types.ts`.
+6.  Si una operación requiere descargar archivos, implementar via API route usando `createServiceClient()` de `@/lib/supabase/service` (verifica ownership antes de servir).
 
 ---
 
@@ -122,14 +150,68 @@ RLS está **habilitado** en las tablas de aplicación (`teams`, `athletes`, `pay
 
 ---
 
+## Testing
+
+### Framework & Tools
+
+*   **Unit & Integration Tests**: Vitest + @testing-library/react + jsdom
+*   **E2E Tests**: Playwright
+*   **Configuration**: `vitest.config.ts` (alias `@/` -> `./src/`, environment `jsdom`)
+
+### Test Commands
+
+```bash
+npm test                    # Run all unit + integration tests
+npm run test:watch          # Watch mode for development
+npm run test:unit           # Run only unit tests (src/__tests__/unit/)
+npm run test:integration    # Run only integration tests (src/__tests__/integration/)
+npm run test:e2e            # Run E2E tests (requires dev server)
+npm run test:e2e:install    # Install Playwright browsers
+```
+
+### Test File Locations
+
+*   **Unit Tests**: `src/__tests__/unit/` — Pure functions (utils.ts, db-types.ts)
+*   **Integration Tests**: `src/__tests__/integration/` — Server actions, API routes, db.ts functions
+*   **E2E Tests**: `e2e/` — Full user flows (Playwright)
+
+### Mocking Strategy
+
+For integration tests, mock external dependencies:
+
+```typescript
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: () => ({ from: mockFrom }),
+}))
+
+vi.mock('@/lib/auth', () => ({
+  auth: { api: { getSession: vi.fn() } },
+}))
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn().mockResolvedValue(new Headers()),
+}))
+```
+
+### Rules for AI Assistants
+
+1.  **Run tests before committing**: Execute `npm test` to verify all tests pass.
+2.  **Add tests for new logic**: When adding pure functions to `utils.ts` or `db-types.ts`, add corresponding unit tests.
+3.  **Add integration tests for new server actions**: When adding functions to `db.ts` or `actions.ts`, add integration tests with mocked Supabase.
+4.  **E2E tests for critical flows**: Only add E2E tests for user-facing flows that cannot be covered by integration tests.
+5.  **Do not mock in unit tests**: Unit tests should test pure functions without mocks.
+
+---
+
 ## Flujo de Verificacion y Despliegue
 
-1.  **Verificacion local sin servidor**: Para validar que los cambios de codigo no rompan la aplicacion y evitar errores de TypeScript, ejecuta `npm run build` en local. No es necesario levantar un servidor de desarrollo local (`npm run dev`) ni configurar credenciales locales de Supabase (`.env.local`), a menos que sea estrictamente necesario para depurar algun error especifico de la integracion.
-2.  **Pruebas funcionales**: La verificacion visual y funcional final se realiza directamente en el entorno de Staging/Produccion provisto por Vercel una vez que los cambios se suben a GitHub.
+1.  **Ejecutar tests**: Antes de cualquier commit, ejecutar `npm test` para verificar que todos los tests unitarios e integration pasen.
+2.  **Verificacion local sin servidor**: Para validar que los cambios de codigo no rompan la aplicacion y evitar errores de TypeScript, ejecuta `npm run build` en local. No es necesario levantar un servidor de desarrollo local (`npm run dev`) ni configurar credenciales locales de Supabase (`.env.local`), a menos que sea estrictamente necesario para depurar algun error especifico de la integracion.
+3.  **Pruebas funcionales**: La verificacion visual y funcional final se realiza directamente en el entorno de Staging/Produccion provisto por Vercel una vez que los cambios se suben a GitHub.
 
-3.  **Commit & Push automático**: Después de cualquier cambio en el código, el agente debe hacer `git add -A`, `git commit` y `git push origin main` automáticamente para que Vercel despliegue.
+4.  **Commit & Push automático**: Después de cualquier cambio en el código, el agente debe hacer `git add -A`, `git commit` y `git push origin main` automáticamente para que Vercel despliegue.
 
-4.  **Despliegue manual de contingencia**: En caso de que el webhook de GitHub no dispare el despliegue automático en Vercel (o si no se actualiza después de unos minutos), el agente debe ejecutar `npx vercel --prod --yes` para forzar un despliegue directo a producción desde la terminal.
+5.  **Despliegue manual de contingencia**: En caso de que el webhook de GitHub no dispare el despliegue automático en Vercel (o si no se actualiza después de unos minutos), el agente debe ejecutar `npx vercel --prod --yes` para forzar un despliegue directo a producción desde la terminal.
 
 ---
 

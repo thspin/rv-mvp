@@ -154,12 +154,9 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- RLS DESACTIVADO - Autorizacion manejada en capa de aplicacion via service role
+-- RLS HABILITADO - Ver supabase/migrations/002_enable_rls_v2.sql
+-- Autorizacion: RLS policies + Better Auth JWT custom
 -- ============================================================================
-
-ALTER TABLE teams DISABLE ROW LEVEL SECURITY;
-ALTER TABLE athletes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- MIGRACION DE FK: athletes.user_id de auth.users a "user"(id) de Better Auth
@@ -190,7 +187,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+-- RLS habilitado via migracion 002_enable_rls_v2.sql
 
 -- 7. Crear tabla de Actividades (activity_logs)
 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -203,4 +200,4 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE activity_logs DISABLE ROW LEVEL SECURITY;
+-- RLS habilitado via migracion 002_enable_rls_v2.sql

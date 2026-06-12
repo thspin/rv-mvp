@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { createServiceClient } from '@/lib/supabase/service'
+import { createAuthenticatedClient } from '@/lib/supabase/authenticated'
 import type { Athlete } from '@/lib/db-types'
 import { fromDbAthlete } from '@/lib/db-types'
 
@@ -19,7 +19,6 @@ export async function getCurrentUserAction(): Promise<Athlete> {
 
 export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
   try {
-    // 1. Verify Better Auth session
     const session = await auth.api.getSession({
       headers: await headers(),
     })
@@ -27,11 +26,10 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
       return { success: false, error: 'No active session', code: 'NO_SESSION' }
     }
 
-    const supabase = createServiceClient()
+    const supabase = createAuthenticatedClient(session.user.id)
     const userId = session.user.id
     const userEmail = session.user.email
 
-    // 2. Look up by user_id (fastest path)
     const { data: userById, error: e1 } = await supabase
       .from('athletes')
       .select('*')
@@ -43,7 +41,6 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
     }
 
     if (userById) {
-      // Sync Google avatar if athlete doesn't have one yet
       const googleImage = session.user.image
       if (googleImage && !userById.avatar_url) {
         await supabase
@@ -55,7 +52,6 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
       return { success: true, data: fromDbAthlete(userById) }
     }
 
-    // 3. Fallback: look up by email (migration path)
     const { data: userByEmail, error: e2 } = await supabase
       .from('athletes')
       .select('*')
@@ -67,7 +63,6 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
     }
 
     if (userByEmail) {
-      // Link existing record to Better Auth user_id and sync avatar
       const googleImage = session.user.image
       const updates: Record<string, unknown> = { user_id: userId }
       if (googleImage && !userByEmail.avatar_url) updates.avatar_url = googleImage
@@ -85,7 +80,6 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
       return { success: true, data: fromDbAthlete(userByEmail) }
     }
 
-    // 4. First login: create new athlete record
     const newAthlete = {
       user_id: userId,
       email: userEmail,
@@ -135,7 +129,7 @@ export async function requestJoinTeamAction(teamId: string): Promise<TeamActionR
       return { success: false, error, code: 'NO_SESSION' }
     }
 
-    const supabase = createServiceClient()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error: updateError } = await supabase
       .from('athletes')
       .update({ team_id: teamId, team_status: 'pendiente' })
@@ -159,7 +153,7 @@ export async function leaveTeamAction(): Promise<TeamActionResult> {
       return { success: false, error, code: 'NO_SESSION' }
     }
 
-    const supabase = createServiceClient()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error: updateError } = await supabase
       .from('athletes')
       .update({

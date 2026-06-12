@@ -1,6 +1,7 @@
 'use server'
 
 import { createServiceClient } from '@/lib/supabase/service'
+import { createAuthenticatedClient } from '@/lib/supabase/authenticated'
 import { addMonthsWithClamp } from '@/lib/utils'
 import { getCurrentUserAction } from '@/lib/actions'
 import { auth } from '@/lib/auth'
@@ -21,7 +22,7 @@ async function requireSession() {
 
 async function requireAdmin() {
   const session = await requireSession()
-  const supabase = createServiceClient()
+  const supabase = createAuthenticatedClient(session.user.id)
   const { data: athlete } = await supabase
     .from('athletes')
     .select('role')
@@ -37,7 +38,7 @@ async function requireAdmin() {
 function requireOwnershipOrAdmin(targetEmail: string) {
   return async () => {
     const session = await requireSession()
-    const supabase = createServiceClient()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data: athlete } = await supabase
       .from('athletes')
       .select('role')
@@ -141,7 +142,8 @@ const PAYMENT_COLUMNS = 'id, athlete_email, athlete_name, amount, method, create
 
 export async function getTeamAsync(teamId?: string): Promise<Team | null> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireSession()
+    const supabase = createAuthenticatedClient(session.user.id)
     let query = supabase.from('teams').select(TEAM_COLUMNS);
     if (teamId) {
       query = query.eq('id', teamId);
@@ -161,8 +163,8 @@ export async function getTeamById(id: string): Promise<Team | null> {
 
 export async function updateTeamInstructionsAsync(instructions: string): Promise<void> {
   try {
-    await requireAdmin()
-    const supabase = createServiceClient();
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
     const activeTeam = await getTeamAsync();
     if (activeTeam?.id) {
       const { error } = await supabase
@@ -178,8 +180,8 @@ export async function updateTeamInstructionsAsync(instructions: string): Promise
 
 export async function updateTeam(id: string, updates: Partial<Team>): Promise<void> {
   try {
-    await requireAdmin()
-    const supabase = createServiceClient();
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { error } = await supabase
       .from('teams')
       .update(updates)
@@ -192,7 +194,8 @@ export async function updateTeam(id: string, updates: Partial<Team>): Promise<vo
 
 export async function getTeamsAsync(): Promise<Team[]> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireSession()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('teams')
       .select(TEAM_COLUMNS)
@@ -209,7 +212,8 @@ export async function getTeamsAsync(): Promise<Team[]> {
 
 export async function getAthletesAsync(): Promise<Athlete[]> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('athletes')
       .select(ATHLETE_COLUMNS)
@@ -228,7 +232,8 @@ export async function getAllAthletes(): Promise<Athlete[]> {
 
 export async function getTeamMembers(teamId: string): Promise<Athlete[]> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireSession()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('athletes')
       .select(ATHLETE_COLUMNS)
@@ -245,7 +250,8 @@ export async function getTeamMembers(teamId: string): Promise<Athlete[]> {
 
 export async function getAthleteByEmail(email: string): Promise<Athlete | null> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireSession()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('athletes')
       .select(ATHLETE_COLUMNS)
@@ -261,8 +267,8 @@ export async function getAthleteByEmail(email: string): Promise<Athlete | null> 
 
 export async function updateAthleteProfileAsync(email: string, updates: Partial<Athlete>): Promise<Athlete | null> {
   try {
-    await requireOwnershipOrAdmin(email)()
-    const supabase = createServiceClient();
+    const session = await requireOwnershipOrAdmin(email)()
+    const supabase = createAuthenticatedClient(session.user.id)
 
     const dbUpdates: Record<string, unknown> = {};
     const snakeCaseData = toSnakeCase(updates);
@@ -358,8 +364,8 @@ export async function uploadMedicalCertificateAsync(email: string, certName: str
 
 export async function updateAthleteTeamStatus(email: string, status: 'activo' | 'pendiente' | null): Promise<void> {
   try {
-    await requireAdmin()
-    const supabase = createServiceClient()
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data: athlete } = await supabase.from('athletes').select('name').eq('email', email).maybeSingle()
     const name = athlete?.name || 'Atleta'
 
@@ -396,8 +402,8 @@ export async function updateAthleteAptoStatus(
   vencimiento: string | null,
   rejectReason?: string
 ): Promise<void> {
-  await requireAdmin()
-  const supabase = createServiceClient()
+  const session = await requireAdmin()
+  const supabase = createAuthenticatedClient(session.user.id)
   const { data: athlete } = await supabase.from('athletes').select('name, user_id').eq('email', email).maybeSingle()
   const name = athlete?.name || 'Atleta'
 
@@ -433,8 +439,8 @@ export async function updateAthletePaymentStatus(
 }
 
 export async function processRequestAsync(email: string, approve: boolean): Promise<void> {
-  await requireAdmin()
-  const supabase = createServiceClient()
+  const session = await requireAdmin()
+  const supabase = createAuthenticatedClient(session.user.id)
   const { data: athlete } = await supabase.from('athletes').select('name, user_id').eq('email', email).maybeSingle()
   const name = athlete?.name || 'Atleta'
 
@@ -476,8 +482,8 @@ async function checkDuplicatePayment(email: string): Promise<boolean> {
 
 export async function addPaymentRecord(email: string, name: string, amount: number, method: string): Promise<void> {
   try {
-    await requireAdmin()
-    const supabase = createServiceClient();
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
 
     const isDuplicate = await checkDuplicatePayment(email);
     if (isDuplicate) {
@@ -501,7 +507,8 @@ export async function addPaymentRecord(email: string, name: string, amount: numb
 
 export async function processPaymentAsync(email: string, approve: boolean, method?: string, reason?: string): Promise<void> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
 
     if (approve) {
       await updateAthleteProfileAsync(email, {
@@ -534,6 +541,7 @@ export async function processPaymentAsync(email: string, approve: boolean, metho
 
 export async function processCertificateAsync(email: string, approve: boolean, months?: number, reason?: string): Promise<void> {
   try {
+    await requireAdmin()
     if (approve) {
       const monthsValidity = months || 6;
       const expirationDate = addMonthsWithClamp(new Date(), monthsValidity);
@@ -562,7 +570,8 @@ export async function expelAthleteAsync(email: string): Promise<void> {
 
 export async function getPaymentsAsync(): Promise<Payment[]> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('payments')
       .select(PAYMENT_COLUMNS)
@@ -584,10 +593,16 @@ export async function getPaymentHistory(): Promise<Payment[]> {
 
 export async function getAnalyticsDataAsync() {
   try {
-    const [payments, athletes] = await Promise.all([
-      getPaymentsAsync(),
-      getAthletesAsync()
-    ]);
+    const session = await requireAdmin()
+    const supabase = createAuthenticatedClient(session.user.id)
+
+    const [{ data: paymentsData }, { data: athletesData }] = await Promise.all([
+      supabase.from('payments').select(PAYMENT_COLUMNS).order('created_at', { ascending: false }),
+      supabase.from('athletes').select(ATHLETE_COLUMNS).order('name'),
+    ])
+
+    const payments = paymentsData ? paymentsData.map(fromDbPayment) : []
+    const athletes = athletesData ? athletesData.map(fromDbAthlete) : []
 
     const teamAthletes = athletes.filter(a => a.team_id && a.team_status === 'activo');
 
@@ -669,8 +684,8 @@ export async function logActivityAsync(
 
 export async function getActivityLogsAsync(): Promise<ActivityLog[]> {
   try {
-    await requireAdmin();
-    const supabase = createServiceClient();
+    const session = await requireAdmin();
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('activity_logs')
       .select('*')
@@ -706,7 +721,8 @@ export async function createNotification(
 
 export async function getNotifications(userId: string) {
   try {
-    const supabase = createServiceClient();
+    const session = await requireSession()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -722,7 +738,8 @@ export async function getNotifications(userId: string) {
 
 export async function markNotificationsAsRead(userId: string): Promise<void> {
   try {
-    const supabase = createServiceClient();
+    const session = await requireSession()
+    const supabase = createAuthenticatedClient(session.user.id)
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
@@ -741,8 +758,8 @@ export async function approvePaymentAsync(
   amount: number,
   method: string
 ): Promise<void> {
-  await requireAdmin();
-  const supabase = createServiceClient();
+  const session = await requireAdmin();
+  const supabase = createAuthenticatedClient(session.user.id)
 
   const { data: athlete } = await supabase
     .from('athletes')
@@ -757,20 +774,20 @@ export async function approvePaymentAsync(
   });
 
   await addPaymentRecord(email, name, amount, method);
-  await logActivityAsync('pagos', 'aprobado', name, email, `Pago aprobado de $${amount.toLocaleString()} vía ${method}`);
+  await logActivityAsync('pagos', 'aprobado', name, email, `Pago aprobado de $${amount.toLocaleString()} via ${method}`);
 
   if (athlete && athlete.user_id) {
     await createNotification(
       athlete.user_id,
       "Pago aprobado",
-      `Tu pago de $${amount.toLocaleString()} mediante ${method} ha sido aprobado con éxito.`
+      `Tu pago de $${amount.toLocaleString()} mediante ${method} ha sido aprobado con exito.`
     );
   }
 }
 
 export async function rejectPaymentAsync(email: string, rejectReason: string): Promise<void> {
-  await requireAdmin();
-  const supabase = createServiceClient();
+  const session = await requireAdmin();
+  const supabase = createAuthenticatedClient(session.user.id)
 
   const { data: athlete } = await supabase
     .from('athletes')
@@ -797,8 +814,8 @@ export async function rejectPaymentAsync(email: string, rejectReason: string): P
 }
 
 export async function condonePaymentAsync(email: string, name: string): Promise<void> {
-  await requireAdmin();
-  const supabase = createServiceClient();
+  const session = await requireAdmin();
+  const supabase = createAuthenticatedClient(session.user.id)
 
   const { data: athlete } = await supabase
     .from('athletes')
