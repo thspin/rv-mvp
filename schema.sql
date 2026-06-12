@@ -244,6 +244,21 @@ CREATE INDEX IF NOT EXISTS idx_athletes_next_payment_due_active
     WHERE team_status = 'activo' AND payment_status IS DISTINCT FROM 'Pagado';
 
 -- ============================================================================
+-- FUNCION HELPER: auth_uid()
+-- Retorna el claim sub (id del usuario Better Auth) como TEXT.
+-- Esto evita errores de conversión a UUID que ocurren con auth.uid() estándar de Supabase.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.auth_uid()
+RETURNS TEXT
+LANGUAGE sql STABLE
+AS $$
+  SELECT coalesce(
+    nullif(current_setting('request.jwt.claim.sub', true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
+  )::TEXT;
+$$;
+
+-- ============================================================================
 -- RLS: site_settings
 -- Lectura: cualquier usuario autenticado. Escritura: solo admin.
 -- ============================================================================
@@ -258,12 +273,12 @@ CREATE POLICY "site_settings_select_auth"
 
 CREATE POLICY "site_settings_admin_write"
     ON site_settings FOR INSERT TO authenticated
-    WITH CHECK (is_admin(auth.uid()::TEXT));
+    WITH CHECK (is_admin(public.auth_uid()));
 
 CREATE POLICY "site_settings_admin_update"
     ON site_settings FOR UPDATE TO authenticated
-    USING (is_admin(auth.uid()::TEXT))
-    WITH CHECK (is_admin(auth.uid()::TEXT));
+    USING (is_admin(public.auth_uid()))
+    WITH CHECK (is_admin(public.auth_uid()));
 
 -- ============================================================================
 -- RLS: payment_reminder_log
@@ -275,4 +290,4 @@ DROP POLICY IF EXISTS "payment_reminder_log_select_admin" ON payment_reminder_lo
 
 CREATE POLICY "payment_reminder_log_select_admin"
     ON payment_reminder_log FOR SELECT TO authenticated
-    USING (is_admin(auth.uid()::TEXT));
+    USING (is_admin(public.auth_uid()));
