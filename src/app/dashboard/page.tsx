@@ -314,7 +314,12 @@ export default function AthleteDashboard() {
         ) : team && (
             <div className="space-y-8 text-left">
               {/* HEADER DE BIENVENIDA AL EQUIPO */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative z-20">
+              <div className="bg-red-50/30 border border-red-100 rounded-[32px] p-6 sm:p-8 shadow-sm relative z-20">
+                {/* Botón de Notificaciones arriba a la derecha */}
+                <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
+                  <NotificationBell />
+                </div>
+
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                   <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left w-full md:w-auto">
                     <div className="w-24 h-24 md:w-28 md:h-28 rounded-[24px] bg-slate-950 overflow-hidden flex items-center justify-center p-2 border border-slate-200 shadow-sm flex-shrink-0">
@@ -345,7 +350,7 @@ export default function AthleteDashboard() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-slate-500 font-medium flex items-center justify-center md:justify-start gap-1.5">
+                      <p className="text-base text-slate-600 font-semibold flex items-center justify-center md:justify-start gap-2">
                         <span>Entrenador: <strong className="text-[#990000]">{team.coach}</strong></span>
                         <a
                           href={whatsappLink}
@@ -354,15 +359,15 @@ export default function AthleteDashboard() {
                           className="inline-flex items-center text-emerald-500 hover:text-emerald-600 transition-all duration-150 p-0.5 hover:scale-110 active:scale-95 flex-shrink-0"
                           title={`Enviar mensaje a ${team.coach}`}
                         >
-                          <svg className="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                             <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.978L2 22l5.233-1.372a9.948 9.948 0 0 0 4.779 1.222h.004c5.505 0 9.989-4.478 9.99-9.985A9.97 9.97 0 0 0 12.012 2zm5.835 14.129c-.256.719-1.285 1.408-1.768 1.47-.482.062-1.077.087-3.136-.763-2.636-1.087-4.32-3.791-4.452-3.966-.131-.174-1.071-1.428-1.071-2.723 0-1.294.678-1.928.919-2.19.242-.262.528-.328.703-.328.176 0 .351.001.503.008.157.007.368-.06.575.441.207.502.71 1.733.772 1.859.062.126.103.272.019.439-.083.167-.124.272-.248.419-.124.146-.26.326-.372.438-.124.125-.254.261-.11.512.145.251.644 1.062 1.379 1.718.948.845 1.745 1.107 1.993 1.232.247.126.392.105.538-.063.145-.167.621-.722.787-.968.166-.246.331-.207.558-.123.228.084 1.448.682 1.696.807.248.125.414.188.476.293.061.104.061.603-.195 1.322z" />
                           </svg>
                         </a>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center md:justify-start gap-3 w-full md:w-auto shrink-0">
-                    {user.role === 'admin' && (
+                  {user.role === 'admin' && (
+                    <div className="flex items-center justify-center md:justify-start w-full md:w-auto shrink-0">
                       <button
                         onClick={() => router.push('/admin')}
                         className="flex items-center gap-2 px-5 py-2.5 bg-[#990000] hover:bg-[#660000] text-white rounded-full font-bold text-xs uppercase tracking-wider transition-all duration-150 shadow-md shadow-[#990000]/10 hover:shadow-[#990000]/20 cursor-pointer"
@@ -370,9 +375,8 @@ export default function AthleteDashboard() {
                         <Shield className="w-4 h-4" />
                         Panel Administrador
                       </button>
-                    )}
-                    <NotificationBell />
-                  </div>
+                    </div>
+                  )}
                 </div>
                 {/* TABS DE NAVEGACIÓN PRINCIPAL */}
                 <div className="flex border-b border-slate-200 gap-1 pb-px mt-8 md:mt-10">
