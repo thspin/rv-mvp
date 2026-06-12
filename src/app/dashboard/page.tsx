@@ -312,16 +312,19 @@ export default function AthleteDashboard() {
             </div>
           </div>
         ) : team && (
-            <div className="space-y-6 text-left">
+            <div className="space-y-8 text-left">
               {/* HEADER DE BIENVENIDA AL EQUIPO */}
-              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative">
+              <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm relative z-20">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                    <div className="w-20 h-20 rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center p-1.5 border border-slate-200 shadow-sm flex-shrink-0">
-                      <Image src="/rv-logo.png" alt={team.name} width={80} height={80} className="w-full h-full object-contain" />
+                  <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left w-full md:w-auto">
+                    <div className="w-24 h-24 md:w-28 md:h-28 rounded-[24px] bg-slate-950 overflow-hidden flex items-center justify-center p-2 border border-slate-200 shadow-sm flex-shrink-0">
+                      <Image src="/rv-logo.png" alt={team.name} width={112} height={112} className="w-full h-full object-contain" />
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="space-y-3 flex-1">
+                      <h1 className={`${archivoFont.className} text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight uppercase`}>
+                        {team.name}
+                      </h1>
+                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                         {user.payment_status === 'Pagado' ? (
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-700">
                             Al día
@@ -342,15 +345,12 @@ export default function AthleteDashboard() {
                           </span>
                         )}
                       </div>
-                      <h1 className={`${archivoFont.className} text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none uppercase truncate`}>
-                        {team.name}
-                      </h1>
                       <p className="text-sm text-slate-500 font-medium">
                         Entrenador: <strong className="text-[#990000]">{team.coach}</strong>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 self-start md:self-auto">
+                  <div className="flex items-center justify-center md:justify-start gap-3 w-full md:w-auto shrink-0">
                     {user.role === 'admin' && (
                       <button
                         onClick={() => router.push('/admin')}
@@ -364,7 +364,7 @@ export default function AthleteDashboard() {
                   </div>
                 </div>
                 {/* TABS DE NAVEGACIÓN PRINCIPAL */}
-                <div className="flex border-b border-slate-200 gap-1 pb-px">
+                <div className="flex border-b border-slate-200 gap-1 pb-px mt-8 md:mt-10">
                   <button
                     onClick={() => setActiveDashboardTab('inicio')}
                     className={`flex-1 sm:flex-none px-6 py-3 text-sm font-extrabold uppercase tracking-tight transition-all duration-155 border-b-2 cursor-pointer ${

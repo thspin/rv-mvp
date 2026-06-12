@@ -87,12 +87,12 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                     {/* Badges de Mora & Estado */}
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       {athlete.mora_months && athlete.mora_months > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 dark:bg-red-950/20 text-[#990000] dark:text-red-400 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-red-200 dark:border-red-900/50">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-red-200 dark:border-red-800">
                           <ShieldAlert className="w-3 h-3" />
                           Mora: {athlete.mora_months} {athlete.mora_months === 1 ? 'mes' : 'meses'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-amber-200 dark:border-amber-900/50">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider rounded-full border border-emerald-200 dark:border-emerald-800">
                           Sin Mora
                         </span>
                       )}
@@ -100,8 +100,8 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                       <span
                         className={`inline-flex px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full border ${
                           isVerifying
-                            ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/50'
-                            : 'bg-zinc-50 dark:bg-zinc-950/20 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800'
+                            ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                         }`}
                       >
                         {isVerifying ? 'Transferencia Subida' : 'Pendiente de Pago'}
