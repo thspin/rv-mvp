@@ -3,6 +3,16 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { createAuthenticatedClient } from '@/lib/supabase/authenticated'
 import { addMonthsWithClamp, computeNextPaymentDue, assertFilenameOwnership } from '@/lib/utils'
+import {
+  email as emailSchema,
+  nonNegativeAmount,
+  paymentMethod as paymentMethodSchema,
+  rejectReason as rejectReasonSchema,
+  safeFilename,
+  shortText,
+  teamInstructionsInput,
+  updateTeamInput,
+} from '@/lib/validators'
 import { getCurrentUserAction } from '@/lib/actions'
 import { getPricingConfig } from '@/lib/settings'
 import { auth } from '@/lib/auth'
@@ -170,13 +180,17 @@ export async function getTeamById(id: string): Promise<Team | null> {
 
 export async function updateTeamInstructionsAsync(instructions: string): Promise<MutationResult> {
   try {
+    const parsed = teamInstructionsInput.safeParse(instructions)
+    if (!parsed.success) {
+      return fail(parsed.error.issues[0]?.message ?? 'invalid instructions', 'UNKNOWN')
+    }
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
     const activeTeam = await getTeamAsync();
     if (activeTeam?.id) {
       const { error } = await supabase
         .from('teams')
-        .update({ instructions })
+        .update({ instructions: parsed.data })
         .eq('id', activeTeam.id);
       if (error) throw error;
     }
@@ -193,11 +207,15 @@ export async function updateTeamInstructionsAsync(instructions: string): Promise
 
 export async function updateTeam(id: string, updates: Partial<Team>): Promise<MutationResult> {
   try {
+    const parsed = updateTeamInput.safeParse(updates)
+    if (!parsed.success) {
+      return fail(parsed.error.issues[0]?.message ?? 'invalid team update', 'UNKNOWN')
+    }
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
     const { error } = await supabase
       .from('teams')
-      .update(updates)
+      .update(parsed.data)
       .eq('id', id);
     if (error) throw error;
     return ok()
@@ -422,6 +440,14 @@ export async function leaveTeamAndReturnAsync(email: string): Promise<Athlete | 
 
 export async function uploadPaymentReceiptAsync(email: string, receiptName: string): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const filenameParsed = safeFilename.safeParse(receiptName)
+    if (!filenameParsed.success) {
+      return fail(filenameParsed.error.issues[0]?.message ?? 'invalid filename', 'UNKNOWN')
+    }
     const session = await requireSession()
     const rl = await rateLimitAction(session.user.id, 'uploadReceipt', 10, '5 m')
     if (!rl.success) throw new Error(rl.error)
@@ -443,6 +469,14 @@ export async function uploadPaymentReceiptAsync(email: string, receiptName: stri
 
 export async function uploadMedicalCertificateAsync(email: string, certName: string): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const filenameParsed = safeFilename.safeParse(certName)
+    if (!filenameParsed.success) {
+      return fail(filenameParsed.error.issues[0]?.message ?? 'invalid filename', 'UNKNOWN')
+    }
     const session = await requireSession()
     const rl = await rateLimitAction(session.user.id, 'uploadMedicalCert', 10, '5 m')
     if (!rl.success) throw new Error(rl.error)
@@ -469,6 +503,10 @@ export async function updateAthleteTeamStatus(
   status: 'activo' | 'pendiente' | null,
 ): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
     const { data: athlete } = await supabase.from('athletes').select('name').eq('email', email).maybeSingle()
@@ -607,17 +645,31 @@ export async function addPaymentRecord(
   method: string,
 ): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const amountParsed = nonNegativeAmount().safeParse(amount)
+    if (!amountParsed.success) {
+      return fail(amountParsed.error.issues[0]?.message ?? 'invalid amount', 'UNKNOWN')
+    }
+    const methodParsed = paymentMethodSchema.safeParse(method)
+    if (!methodParsed.success) {
+      return fail(methodParsed.error.issues[0]?.message ?? 'invalid payment method', 'UNKNOWN')
+    }
+    const validatedEmail = emailParsed.data
+
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
 
-    const isDuplicate = await checkDuplicatePayment(email);
+    const isDuplicate = await checkDuplicatePayment(validatedEmail);
     if (isDuplicate) {
-      console.warn(`Payment for ${email} this month already exists. Skipping insertion for idempotency.`);
-      return fail(`Pago duplicado para ${email} en el mes actual`, 'DUPLICATE')
+      console.warn(`Payment for ${validatedEmail} this month already exists. Skipping insertion for idempotency.`);
+      return fail(`Pago duplicado para ${validatedEmail} en el mes actual`, 'DUPLICATE')
     }
 
     const { error } = await supabase.from('payments').insert({
-      athlete_email: email,
+      athlete_email: validatedEmail,
       athlete_name: name,
       amount: amount,
       method: method,
@@ -643,6 +695,24 @@ export async function processPaymentAsync(
   reason?: string,
 ): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const validatedEmail = emailParsed.data
+    if (approve && method) {
+      const methodParsed = paymentMethodSchema.safeParse(method)
+      if (!methodParsed.success) {
+        return fail(methodParsed.error.issues[0]?.message ?? 'invalid payment method', 'UNKNOWN')
+      }
+    }
+    if (!approve && reason) {
+      const reasonParsed = rejectReasonSchema.safeParse(reason)
+      if (!reasonParsed.success) {
+        return fail(reasonParsed.error.issues[0]?.message ?? 'invalid reject reason', 'UNKNOWN')
+      }
+    }
+
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
 
@@ -660,23 +730,23 @@ export async function processPaymentAsync(
           next_payment_due: nextDue,
           mora_months: 0,
         })
-        .eq('email', email)
+        .eq('email', validatedEmail)
 
       const { data: athlete, error: athleteError } = await supabase
         .from('athletes')
         .select('name')
-        .eq('email', email)
+        .eq('email', validatedEmail)
         .maybeSingle();
 
       if (athleteError) throw athleteError;
 
       if (athlete) {
-        const result = await addPaymentRecord(email, athlete.name, pricing.amount, method || 'Transferencia')
+        const result = await addPaymentRecord(validatedEmail, athlete.name, pricing.amount, method || 'Transferencia')
         if (!result.success) return result
       }
       return ok()
     } else {
-      await updateAthleteProfileAsync(email, {
+      await updateAthleteProfileAsync(validatedEmail, {
         payment_status: 'Vencido',
         payment_motivo_rechazo: reason || 'Comprobante no valido',
       });
@@ -699,6 +769,16 @@ export async function processCertificateAsync(
   reason?: string,
 ): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    if (reason) {
+      const reasonParsed = rejectReasonSchema.safeParse(reason)
+      if (!reasonParsed.success) {
+        return fail(reasonParsed.error.issues[0]?.message ?? 'invalid reason', 'UNKNOWN')
+      }
+    }
     await requireAdmin()
     if (approve) {
       const monthsValidity = months || 6;
@@ -907,74 +987,114 @@ export async function approvePaymentAsync(
   amount: number,
   method: string
 ): Promise<MutationResult> {
-  const session = await requireAdmin();
-  const supabase = createAuthenticatedClient(session.user.id)
+  try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const amountParsed = nonNegativeAmount().safeParse(amount)
+    if (!amountParsed.success) {
+      return fail(amountParsed.error.issues[0]?.message ?? 'invalid amount', 'UNKNOWN')
+    }
+    const methodParsed = paymentMethodSchema.safeParse(method)
+    if (!methodParsed.success) {
+      return fail(methodParsed.error.issues[0]?.message ?? 'invalid payment method', 'UNKNOWN')
+    }
+    const nameParsed = shortText(120).safeParse(name)
+    if (!nameParsed.success) {
+      return fail(nameParsed.error.issues[0]?.message ?? 'invalid name', 'UNKNOWN')
+    }
 
-  const { data: athlete } = await supabase
-    .from('athletes')
-    .select('user_id')
-    .eq('email', email)
-    .maybeSingle();
+    const validatedEmail = emailParsed.data
+    const validatedName = nameParsed.data
 
-  const pricing = await getPricingConfig()
-  const now = new Date()
-  const nextDue = computeNextPaymentDue(now, pricing.dueDay).toISOString()
-  await supabase
-    .from('athletes')
-    .update({
-      payment_status: 'Pagado',
-      payment_receipt_url: '',
-      payment_motivo_rechazo: null,
-      mora_months: 0,
-      last_payment_date: now.toISOString(),
-      next_payment_due: nextDue,
-    })
-    .eq('email', email);
+    const session = await requireAdmin();
+    const supabase = createAuthenticatedClient(session.user.id)
 
-  // The athlete update happened. If the payment record insert fails, the
-  // system is in an inconsistent state (athlete marked Pagado but no
-  // payment row). Surface this loudly to the caller.
-  const paymentResult = await addPaymentRecord(email, name, amount, method);
-  if (!paymentResult.success) {
-    Sentry.captureException(new Error(`approvePaymentAsync: payment record failed for ${email}`), {
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('user_id')
+      .eq('email', validatedEmail)
+      .maybeSingle();
+
+    const pricing = await getPricingConfig()
+    const now = new Date()
+    const nextDue = computeNextPaymentDue(now, pricing.dueDay).toISOString()
+    await supabase
+      .from('athletes')
+      .update({
+        payment_status: 'Pagado',
+        payment_receipt_url: '',
+        payment_motivo_rechazo: null,
+        mora_months: 0,
+        last_payment_date: now.toISOString(),
+        next_payment_due: nextDue,
+      })
+      .eq('email', validatedEmail);
+
+    // The athlete update happened. If the payment record insert fails, the
+    // system is in an inconsistent state (athlete marked Pagado but no
+    // payment row). Surface this loudly to the caller.
+    const paymentResult = await addPaymentRecord(validatedEmail, validatedName, amount, method);
+    if (!paymentResult.success) {
+      Sentry.captureException(new Error(`approvePaymentAsync: payment record failed for ${validatedEmail}`), {
+        tags: { source: 'db.approvePaymentAsync' },
+        extra: { email: validatedEmail, name: validatedName, amount, method, paymentError: paymentResult.error },
+        level: 'error',
+      })
+      return paymentResult
+    }
+
+    await logActivityAsync('pagos', 'aprobado', validatedName, validatedEmail, `Pago aprobado de $${amount.toLocaleString()} via ${method}`);
+
+    if (athlete && athlete.user_id) {
+      await createNotification(
+        athlete.user_id,
+        "Pago aprobado",
+        `Tu pago de $${amount.toLocaleString()} mediante ${method} ha sido aprobado con exito.`
+      );
+    }
+    return ok()
+  } catch (err) {
+    Sentry.captureException(err, {
       tags: { source: 'db.approvePaymentAsync' },
-      extra: { email, name, amount, method, paymentError: paymentResult.error },
-      level: 'error',
+      extra: { email, name, amount, method },
     })
-    return paymentResult
+    console.error('Error in approvePaymentAsync:', err)
+    return fail(String(err), 'DB_ERROR')
   }
-
-  await logActivityAsync('pagos', 'aprobado', name, email, `Pago aprobado de $${amount.toLocaleString()} via ${method}`);
-
-  if (athlete && athlete.user_id) {
-    await createNotification(
-      athlete.user_id,
-      "Pago aprobado",
-      `Tu pago de $${amount.toLocaleString()} mediante ${method} ha sido aprobado con exito.`
-    );
-  }
-  return ok()
 }
 
 export async function rejectPaymentAsync(email: string, rejectReason: string): Promise<MutationResult> {
   try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const reasonParsed = rejectReasonSchema.safeParse(rejectReason)
+    if (!reasonParsed.success) {
+      return fail(reasonParsed.error.issues[0]?.message ?? 'invalid reject reason', 'UNKNOWN')
+    }
+    const validatedEmail = emailParsed.data
+    const validatedReason = reasonParsed.data
+
     const session = await requireAdmin();
     const supabase = createAuthenticatedClient(session.user.id)
 
     const { data: athlete } = await supabase
       .from('athletes')
       .select('user_id, name')
-      .eq('email', email)
+      .eq('email', validatedEmail)
       .maybeSingle();
 
-    await updateAthleteProfileAsync(email, {
+    await updateAthleteProfileAsync(validatedEmail, {
       payment_status: 'Pendiente_Pago',
       payment_receipt_url: '',
-      payment_motivo_rechazo: rejectReason,
+      payment_motivo_rechazo: validatedReason,
     });
 
     const name = athlete?.name || 'Atleta';
-    await logActivityAsync('pagos', 'rechazado', name, email, `Comprobante de pago rechazado. Motivo: ${rejectReason}`);
+    await logActivityAsync('pagos', 'rechazado', name, validatedEmail, `Comprobante de pago rechazado. Motivo: ${validatedReason}`);
 
     if (athlete && athlete.user_id) {
       await createNotification(
@@ -998,39 +1118,59 @@ export async function condonePaymentAsync(
   email: string,
   name: string,
 ): Promise<MutationResult> {
-  const session = await requireAdmin();
-  const supabase = createAuthenticatedClient(session.user.id)
+  try {
+    const emailParsed = emailSchema.safeParse(email)
+    if (!emailParsed.success) {
+      return fail(emailParsed.error.issues[0]?.message ?? 'invalid email', 'UNKNOWN')
+    }
+    const nameParsed = shortText(120).safeParse(name)
+    if (!nameParsed.success) {
+      return fail(nameParsed.error.issues[0]?.message ?? 'invalid name', 'UNKNOWN')
+    }
+    const validatedEmail = emailParsed.data
+    const validatedName = nameParsed.data
 
-  const { data: athlete } = await supabase
-    .from('athletes')
-    .select('user_id')
-    .eq('email', email)
-    .maybeSingle();
+    const session = await requireAdmin();
+    const supabase = createAuthenticatedClient(session.user.id)
 
-  await updateAthleteProfileAsync(email, {
-    payment_status: 'Pagado',
-    payment_receipt_url: '',
-    mora_months: 0,
-  });
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('user_id')
+      .eq('email', validatedEmail)
+      .maybeSingle();
 
-  const paymentResult = await addPaymentRecord(email, name, 0, 'Condonado');
-  if (!paymentResult.success) {
-    Sentry.captureException(new Error(`condonePaymentAsync: payment record failed for ${email}`), {
+    await updateAthleteProfileAsync(validatedEmail, {
+      payment_status: 'Pagado',
+      payment_receipt_url: '',
+      mora_months: 0,
+    });
+
+    const paymentResult = await addPaymentRecord(validatedEmail, validatedName, 0, 'Condonado');
+    if (!paymentResult.success) {
+      Sentry.captureException(new Error(`condonePaymentAsync: payment record failed for ${validatedEmail}`), {
+        tags: { source: 'db.condonePaymentAsync' },
+        extra: { email: validatedEmail, name: validatedName, paymentError: paymentResult.error },
+        level: 'error',
+      })
+      return paymentResult
+    }
+
+    await logActivityAsync('pagos', 'condonado', validatedName, validatedEmail, 'Pago de cuota mensual condonado');
+
+    if (athlete && athlete.user_id) {
+      await createNotification(
+        athlete.user_id,
+        "Pago condonado",
+        `El pago de tu cuota mensual ha sido condonado por el administrador.`
+      );
+    }
+    return ok()
+  } catch (err) {
+    Sentry.captureException(err, {
       tags: { source: 'db.condonePaymentAsync' },
-      extra: { email, name, paymentError: paymentResult.error },
-      level: 'error',
+      extra: { email, name },
     })
-    return paymentResult
+    console.error('Error in condonePaymentAsync:', err)
+    return fail(String(err), 'DB_ERROR')
   }
-
-  await logActivityAsync('pagos', 'condonado', name, email, 'Pago de cuota mensual condonado');
-
-  if (athlete && athlete.user_id) {
-    await createNotification(
-      athlete.user_id,
-      "Pago condonado",
-      `El pago de tu cuota mensual ha sido condonado por el administrador.`
-    );
-  }
-  return ok()
 }

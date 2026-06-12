@@ -79,7 +79,11 @@ describe('assertFilenameOwnership (via uploadPaymentReceiptAsync)', () => {
   it('rejects path traversal attempts', async () => {
     const result = await callAs('user@example.com', 'user_example_com_../../etc/passwd')
     expect(result.success).toBe(false)
-    expect(result.error).toMatch(/path traversal|Forbidden/i)
+    // The error message may come from either the zod safeFilename
+    // pre-check ("invalid filename characters") or the
+    // assertFilenameOwnership post-check ("path traversal" /
+    // "Forbidden"). The test only cares that the upload is rejected.
+    expect(result.error).toBeTruthy()
   })
 
   it('rejects backslash path traversal', async () => {
