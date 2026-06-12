@@ -21,6 +21,9 @@ GOOGLE_CLIENT_SECRET=<client secret de Google OAuth>
 # Opcionales
 BETTER_AUTH_URL=<URL personalizada si aplica>
 VERCEL_URL=<automático en Vercel>
+
+# NUNCA setear en Vercel (solo .env.local)
+ENABLE_DEBUG_ENDPOINT=true  # SOLO desarrollo local - NUNCA en Vercel
 ```
 
 **Para generar BETTER_AUTH_SECRET:**

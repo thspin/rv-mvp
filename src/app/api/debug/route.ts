@@ -1,10 +1,21 @@
+/**
+ * WARNING: ENDPOINT DE DIAGNOSTICO — SOLO DESARROLLO LOCAL
+ *
+ * PROTECCIONES (no remover ninguna):
+ * 1. ENABLE_DEBUG_ENDPOINT=true requerido en .env.local
+ * 2. Middleware bloquea /api/debug en cualquier entorno
+ *
+ * NUNCA committear con las guardas desactivadas.
+ */
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getCurrentUserActionDetailed } from '@/lib/actions'
 
+const IS_ENABLED = process.env.ENABLE_DEBUG_ENDPOINT === 'true'
+
 export async function GET() {
-  if (process.env.NODE_ENV === 'production') {
+  if (!IS_ENABLED) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
