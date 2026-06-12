@@ -414,8 +414,44 @@ export default function AthleteDashboard() {
               </div>
 
               {activeDashboardTab === 'inicio' ? (
-                <div className="bg-white border border-slate-200 rounded-[32px] p-12 text-center shadow-sm">
-                  <p className="text-slate-400 text-sm font-medium">Contenido próximamente.</p>
+                <div className="max-w-md mx-auto space-y-6">
+                  {/* CUMPLEAÑOS DE LA SEMANA */}
+                  <SectionCard spaceY="space-y-0" padding="p-0">
+                    <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <Cake className="w-4.5 h-4.5 text-white" />
+                        </div>
+                        <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
+                          Cumpleaños de la semana
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="px-6 py-5">
+                      {birthdaysThisWeek.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-3">
+                          <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center">
+                            <Cake className="w-6 h-6 text-slate-300" />
+                          </div>
+                          <p className="text-xs font-semibold text-slate-400">No hay cumpleaños de compañeros esta semana.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {birthdaysThisWeek.map(member => (
+                            <div key={member.id} className="flex items-center gap-3 bg-gradient-to-r from-violet-50/70 to-purple-50/40 p-3 rounded-xl border border-violet-100/60">
+                              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xs uppercase shadow-sm">
+                                {member.name ? member.name[0] : '🎂'}
+                              </div>
+                              <div className="text-left min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-800 leading-none truncate">{member.name}</p>
+                                <p className="text-[10px] text-violet-600 font-semibold mt-1">🎉 {member.birthdayStr}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </SectionCard>
                 </div>
               ) : activeDashboardTab === 'entrenamientos' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -651,10 +687,7 @@ export default function AthleteDashboard() {
 
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-                  {/* COLUMNA IZQUIERDA (2/3) */}
-                  <div className="lg:col-span-2 space-y-6">
+                <div className="max-w-2xl mx-auto space-y-6 text-left">
 
                     {/* PLAN DE SUSCRIPCIÓN Y PAGO */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
@@ -745,16 +778,6 @@ export default function AthleteDashboard() {
                           </div>
                         )}
 
-                        {user.payment_status === 'Pendiente_Pago' && (
-                          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
-                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                              <AlertTriangle className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <div className="text-xs text-amber-800 font-medium leading-relaxed">
-                              <strong>Falta registrar pago:</strong> Reportá tu transferencia mensual.
-                            </div>
-                          </div>
-                        )}
 
                         {/* Upload form */}
                         {(user.payment_status === 'Pendiente_Pago' || user.payment_status === 'Vencido') && (
@@ -885,50 +908,6 @@ export default function AthleteDashboard() {
                         )}
                       </div>
                     </SectionCard>
-                  </div>
-
-                  {/* COLUMNA DERECHA (1/3) */}
-                  <div className="space-y-6">
-
-                    {/* CUMPLEAÑOS DE LA SEMANA */}
-                    <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <Cake className="w-4.5 h-4.5 text-white" />
-                          </div>
-                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
-                            Cumpleaños
-                          </h3>
-                        </div>
-                      </div>
-                      <div className="px-6 py-5">
-                        {birthdaysThisWeek.length === 0 ? (
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
-                              <Cake className="w-4 h-4 text-violet-300" />
-                            </div>
-                            <p className="text-xs text-slate-400 italic leading-relaxed">No hay cumpleaños de compañeros esta semana.</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2.5">
-                            {birthdaysThisWeek.map(member => (
-                              <div key={member.id} className="flex items-center gap-3 bg-gradient-to-r from-violet-50 to-purple-50/50 p-3 rounded-xl border border-violet-100/80">
-                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-xs uppercase shadow-sm">
-                                  {member.name ? member.name[0] : '🎂'}
-                                </div>
-                                <div className="text-left min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-slate-850 leading-none truncate">{member.name}</p>
-                                  <p className="text-[10px] text-violet-600 font-semibold mt-1">🎉 {member.birthdayStr}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </SectionCard>
-                  </div>
-
                 </div>
               )}
 
