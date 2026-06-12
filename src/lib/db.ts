@@ -805,41 +805,7 @@ export async function getAnalyticsDataAsync() {
 
     const teamAthletes = athletes.filter(a => a.team_id && a.team_status === 'activo');
 
-    const monthlyData: { [key: string]: { revenue: number; paymentCount: number; month: string; monthLabel: string   }
-}
-
-export async function checkUpcomingExpirations(): Promise<{
-  notified30: number
-  notified15: number
-  notified7: number
-  expired: number
-}> {
-  await requireAdmin()
-  try {
-    const { checkUpcomingExpirations: runCron } = await import('@/lib/db-internal')
-    return await runCron()
-  } catch (err) {
-    console.error('Error in checkUpcomingExpirations:', err)
-    return { notified30: 0, notified15: 0, notified7: 0, expired: 0 }
-  }
-}
-
-export async function checkUpcomingPaymentDues(): Promise<{
-  preDue7: number
-  preDue3: number
-  dueToday: number
-  overdue1: number
-  overdue7: number
-}> {
-  await requireAdmin()
-  try {
-    const { checkUpcomingPaymentDues: runCron } = await import('@/lib/db-internal')
-    return await runCron()
-  } catch (err) {
-    console.error('Error in checkUpcomingPaymentDues:', err)
-    return { preDue7: 0, preDue3: 0, dueToday: 0, overdue1: 0, overdue7: 0 }
-  }
-} = {};
+    const monthlyData: { [key: string]: { revenue: number; paymentCount: number; month: string; monthLabel: string } } = {};
 
     payments.forEach(p => {
       if (p.status !== 'aprobado') return;
