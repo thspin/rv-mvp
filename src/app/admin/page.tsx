@@ -582,36 +582,18 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Entrenamientos Tab */}
-        {activeTab === "entrenamientos" && team && (
-          <div className="bg-card rounded-[32px] p-6 border border-border">
-            <h2 className={`${archivoFont?.className || ''} text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight mb-6 text-left`}>
-              Planificación de Entrenamientos
-            </h2>
-            {isSessionFormOpen ? (
-              <SessionForm
-                initialData={editingSession}
-                onSave={handleSaveSession}
-                onDelete={handleDeleteSession}
-                onCancel={() => {
-                  setIsSessionFormOpen(false);
-                  setEditingSession(null);
-                }}
-              />
-            ) : (
-              <TrainingSchedule
-                sessionsByDow={sessionsByDow}
-                isAdmin={true}
-                onAddSession={() => {
-                  setEditingSession(null);
-                  setIsSessionFormOpen(true);
-                }}
-                onEditSession={(session) => {
-                  setEditingSession(session);
-                  setIsSessionFormOpen(true);
-                }}
-              />
-            )}
+        {/* Entrenamientos Tab - Proximamente */}
+        {activeTab === "entrenamientos" && (
+          <div className="bg-card rounded-xl p-6 border border-border">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <Calendar className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Proximamente</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                La planificacion de entrenamientos estara disponible pronto. Podras crear y gestionar sesiones semanales con horarios, ubicaciones y niveles.
+              </p>
+            </div>
           </div>
         )}
 
