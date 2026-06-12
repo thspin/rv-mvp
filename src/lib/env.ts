@@ -91,7 +91,6 @@ export function loadEnv(): Env {
   } else if (!isCI) {
     const missing = collectMissing(merged, Object.keys(coreSchema.shape))
     if (missing.length > 0) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[env] Missing required env vars in non-production (will not block):\n` +
           missing.map((k) => `  - ${k}`).join('\n'),
@@ -101,7 +100,6 @@ export function loadEnv(): Env {
     const hasUpstashUrl = !!merged.UPSTASH_REDIS_REST_URL
     const hasUpstashToken = !!merged.UPSTASH_REDIS_REST_TOKEN
     if (hasUpstashUrl !== hasUpstashToken) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[env] Upstash is partially configured (URL=${hasUpstashUrl}, TOKEN=${hasUpstashToken}). ` +
           `Rate limiting will be disabled until both are set.`,

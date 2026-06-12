@@ -53,7 +53,7 @@ describe('assertFilenameOwnership (via uploadPaymentReceiptAsync)', () => {
     const { auth } = await import('@/lib/auth')
     vi.mocked(auth.api.getSession).mockResolvedValue({
       user: { id: 'user-123', email: userEmail },
-    } as any)
+    } as unknown as Awaited<ReturnType<typeof auth.api.getSession>>)
 
     const { uploadPaymentReceiptAsync } = await import('@/lib/db')
     return await uploadPaymentReceiptAsync(userEmail, receiptName)

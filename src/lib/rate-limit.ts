@@ -17,7 +17,6 @@ function getRedis(): Redis | null {
       !warnedMissingUpstash &&
       !process.env.CI
     ) {
-      // eslint-disable-next-line no-console
       console.warn(
         '[rate-limit] Upstash is not configured. Rate limiting is disabled (fail-open). ' +
         'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable it.',
