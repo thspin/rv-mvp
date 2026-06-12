@@ -5,8 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 let redis: Redis | null = null
 
 function getRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
   if (!url || !token) return null
   if (!redis) {
     redis = new Redis({ url, token })

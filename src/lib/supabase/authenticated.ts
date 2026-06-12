@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import jwt from 'jsonwebtoken'
 
 function signSupabaseJWT(userId: string): string {
-  const secret = process.env.SUPABASE_JWT_SECRET!
+  const secret = (process.env.SUPABASE_JWT_SECRET ?? "").trim();
   const payload = {
     sub: userId,
     role: 'authenticated',
@@ -15,12 +15,10 @@ function signSupabaseJWT(userId: string): string {
 
 export function createAuthenticatedClient(userId: string) {
   const supabaseToken = signSupabaseJWT(userId)
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: { headers: { Authorization: `Bearer ${supabaseToken}` } },
-    }
-  )
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${supabaseToken}` } },
+  })
 }

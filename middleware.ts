@@ -8,6 +8,8 @@ function getAllowedOrigins(): Set<string> {
   const origins = new Set<string>();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (appUrl) origins.add(appUrl.replace(/\/$/, ""));
+  const betterAuthUrl = process.env.BETTER_AUTH_URL?.trim();
+  if (betterAuthUrl) origins.add(betterAuthUrl.replace(/\/$/, ""));
   const vercelUrl = process.env.VERCEL_URL?.trim();
   if (vercelUrl) origins.add(`https://${vercelUrl}`);
   if (process.env.NODE_ENV !== "production") {
@@ -99,7 +101,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (!isApiRoute(pathname)) {
+  // Allow /auth/* pages (e.g. /auth/error) without a session
+  if (!isApiRoute(pathname) && !pathname.startsWith("/auth/")) {
     const sessionCookie = getSessionCookie(request);
     if (!sessionCookie) {
       return NextResponse.redirect(new URL("/", request.url));

@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim();
+    const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
 
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
