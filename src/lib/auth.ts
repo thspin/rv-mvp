@@ -1,10 +1,13 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
+import { loadEnv } from "@/lib/env";
+
+loadEnv();
 
 const authSecret = (process.env.BETTER_AUTH_SECRET ?? "").trim();
 if (!authSecret) {
-  console.error(
+  throw new Error(
     "[CRITICAL] BETTER_AUTH_SECRET is not set. Authentication will not work correctly. " +
     "Generate one with: openssl rand -base64 32"
   );
@@ -13,7 +16,7 @@ if (!authSecret) {
 // Trim DATABASE_URL to remove any trailing \r\n from env vars
 const databaseUrl = (process.env.DATABASE_URL ?? "").trim();
 if (!databaseUrl) {
-  console.error("[CRITICAL] DATABASE_URL is not set. Database connections will fail.");
+  throw new Error("[CRITICAL] DATABASE_URL is not set. Database connections will fail.");
 }
 
 const pool = new Pool({

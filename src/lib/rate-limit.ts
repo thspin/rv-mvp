@@ -1,13 +1,31 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { NextRequest, NextResponse } from 'next/server'
+import { loadEnv } from '@/lib/env'
+
+loadEnv()
 
 let redis: Redis | null = null
+let warnedMissingUpstash = false
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
-  if (!url || !token) return null
+  if (!url || !token) {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      !warnedMissingUpstash &&
+      !process.env.CI
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[rate-limit] Upstash is not configured. Rate limiting is disabled (fail-open). ' +
+        'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable it.',
+      )
+      warnedMissingUpstash = true
+    }
+    return null
+  }
   if (!redis) {
     redis = new Redis({ url, token })
   }

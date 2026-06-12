@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import jwt from 'jsonwebtoken'
+import { loadEnv } from '@/lib/env'
+
+loadEnv()
 
 function signSupabaseJWT(userId: string): string {
   const secret = (process.env.SUPABASE_JWT_SECRET ?? "").trim();
+  if (!secret) {
+    throw new Error(
+      "[CRITICAL] SUPABASE_JWT_SECRET is not set. Cannot sign Supabase auth JWT. " +
+      "Get it from: Supabase Dashboard > Settings > API > JWT Secret"
+    )
+  }
   const payload = {
     sub: userId,
     role: 'authenticated',
