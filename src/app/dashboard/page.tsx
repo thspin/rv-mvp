@@ -15,6 +15,7 @@ import { parseTrainingDays, parseInstructions } from '@/lib/db-types';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/toast';
 import Navbar from '@/components/Navbar';
+import TrainingSchedule from '@/components/TrainingSchedule';
 import HeaderAlert from '@/components/HeaderAlert';
 import NotificationBell from '@/components/NotificationBell';
 import {
@@ -209,18 +210,6 @@ export default function AthleteDashboard() {
   const coachPhone = teamAdmin?.phone?.replace(/[^0-9]/g, '') || '5493804592633';
   const whatsappLink = `https://wa.me/${coachPhone}?text=${encodeURIComponent('Hola ' + coachName + ', te escribo desde la app del equipo...')}`;
 
-  const getEmbedUrl = (url?: string) => {
-    if (!url) return null;
-    if (url.includes('<iframe')) {
-      const match = url.match(/src="([^"]+)"/);
-      return match ? match[1] : null;
-    }
-    if (url.startsWith('http')) {
-      return url;
-    }
-    return null;
-  };
-
   const birthdaysThisWeek = (() => {
     if (!user.team_id) return [];
     const members = teamMembers;
@@ -264,6 +253,14 @@ export default function AthleteDashboard() {
       return team?.subscription_plans ? JSON.parse(team.subscription_plans) : [];
     } catch {
       return [];
+    }
+  })();
+
+  const sessionsByDow = (() => {
+    try {
+      return team?.instructions ? JSON.parse(team.instructions) : { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+    } catch {
+      return { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
     }
   })();
 
@@ -471,237 +468,8 @@ export default function AthleteDashboard() {
                   </SectionCard>
                 </div>
               ) : activeDashboardTab === 'entrenamientos' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-                  {/* COLUMNA IZQUIERDA – PLANIFICACIÓN (2/3) */}
-                  <div className="lg:col-span-2 space-y-6">
-
-                    {/* ENTRENAMIENTOS DIARIOS */}
-                    <SectionCard spaceY="space-y-0" padding="p-0">
-                      {/* Header con acento */}
-                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 sm:px-8 py-5 rounded-t-[32px]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <Dumbbell className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className={`${archivoFont.className} text-base sm:text-lg font-black text-white uppercase tracking-tight leading-none`}>
-                              Planificación Diaria
-                            </h3>
-                            <p className="text-blue-100 text-[11px] font-semibold mt-0.5">
-                              {parsedShifts ? `${parsedShifts.length} turno${parsedShifts.length > 1 ? 's' : ''} disponible${parsedShifts.length > 1 ? 's' : ''}` : 'Sin turnos configurados'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="px-6 sm:px-8 py-6 space-y-5">
-                        {parsedShifts ? (
-                          <div className="space-y-5">
-                            {/* Tabs internas de turnos — estilo pill */}
-                            <div className="flex flex-wrap gap-2 p-1 bg-slate-100/80 rounded-2xl">
-                              {parsedShifts.map((shift) => (
-                                <button
-                                  key={shift.id}
-                                  onClick={() => setActiveShiftId(shift.id)}
-                                  className={`flex-1 min-w-0 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                                    activeShiftId === shift.id
-                                      ? 'bg-white text-slate-900 shadow-sm shadow-slate-200/60 ring-1 ring-slate-200/50'
-                                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-                                  }`}
-                                >
-                                  {shift.name}
-                                </button>
-                              ))}
-                            </div>
-
-                            {/* Aviso general */}
-                            {parsedInstructions?.general && (
-                              <div className="flex items-start gap-3 bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-100 p-4 rounded-2xl">
-                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <Zap className="w-4 h-4 text-blue-600" />
-                                </div>
-                                <div className="space-y-1 min-w-0">
-                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 block">
-                                    Aviso General
-                                  </span>
-                                  <p className="text-xs font-medium text-blue-900 whitespace-pre-line leading-relaxed">{parsedInstructions.general}</p>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Contenido del turno activo */}
-                            {parsedShifts
-                              .filter((shift) => shift.id === activeShiftId)
-                              .map((shift) => {
-                                const routine = parsedInstructions?.shifts[shift.id];
-                                return (
-                                  <div key={shift.id} className="space-y-4 text-left">
-                                    {/* Info del turno — badges */}
-                                    <div className="flex flex-wrap gap-2.5">
-                                      <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-3.5 py-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
-                                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                                        </div>
-                                        <div className="text-left">
-                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block leading-none">Días</span>
-                                          <span className="text-xs font-bold text-slate-800 leading-tight">{shift.days}</span>
-                                        </div>
-                                      </div>
-                                      <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-3.5 py-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-                                          <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                                        </div>
-                                        <div className="text-left">
-                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block leading-none">Horario</span>
-                                          <span className="text-xs font-bold text-slate-800 leading-tight">{shift.time}</span>
-                                        </div>
-                                      </div>
-                                      <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-3.5 py-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
-                                          <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                                        </div>
-                                        <div className="text-left">
-                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block leading-none">Lugar</span>
-                                          <span className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[140px] block">{shift.location}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Rutina / Planificación */}
-                                    <div className="border border-slate-150 rounded-2xl overflow-hidden">
-                                      <div className="bg-slate-50 px-5 py-3 border-b border-slate-150 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-slate-400" />
-                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                                          Planificación del Turno
-                                        </span>
-                                      </div>
-                                      <div className="p-5 bg-white">
-                                        {routine ? (
-                                          <p className="text-sm font-medium text-slate-700 whitespace-pre-line leading-relaxed">
-                                            {routine}
-                                          </p>
-                                        ) : (
-                                          <div className="flex items-center gap-3 text-slate-400">
-                                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-                                              <FileText className="w-5 h-5 text-slate-300" />
-                                            </div>
-                                            <p className="text-sm italic">
-                                              No se ha cargado una planificación específica para este turno.
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        ) : (
-                          <div className="bg-slate-50 border border-slate-150 p-5 rounded-2xl text-slate-700 font-medium leading-relaxed">
-                            {team.instructions ? (
-                              <p className="text-sm whitespace-pre-line">
-                                {team.instructions}
-                              </p>
-                            ) : (
-                              <div className="flex items-center gap-3 text-slate-400">
-                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                                  <Dumbbell className="w-5 h-5 text-slate-300" />
-                                </div>
-                                <p className="text-sm italic">
-                                  El coordinador aún no ha publicado instrucciones de entrenamiento.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </SectionCard>
-                  </div>
-
-                  {/* COLUMNA DERECHA (1/3) */}
-                  <div className="space-y-6">
-                    {/* FONDO DEL FIN DE SEMANA */}
-                    <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <Sun className="w-4.5 h-4.5 text-white" />
-                          </div>
-                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
-                            Fondo del Finde
-                          </h3>
-                        </div>
-                      </div>
-                      <div className="px-6 py-5">
-                        {team.special_instructions ? (
-                          <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">
-                            {team.special_instructions}
-                          </p>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
-                              <Calendar className="w-4 h-4 text-amber-400" />
-                            </div>
-                            <p className="text-xs text-slate-400 italic leading-relaxed">
-                              No hay entrenamientos especiales programados para este fin de semana.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </SectionCard>
-
-                    {/* UBICACIÓN */}
-                    <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <Navigation className="w-4.5 h-4.5 text-white" />
-                          </div>
-                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
-                            Ubicación
-                          </h3>
-                        </div>
-                      </div>
-                      <div className="px-6 py-5 space-y-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
-                            <MapPin className="w-3.5 h-3.5 text-red-500" />
-                          </div>
-                          <p className="text-xs font-bold text-slate-700 truncate">
-                            {team.location}
-                          </p>
-                        </div>
-
-                        {getEmbedUrl(team.google_maps_url) ? (
-                          <div className="w-full h-44 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
-                            <iframe
-                              src={getEmbedUrl(team.google_maps_url)!}
-                              width="100%"
-                              height="100%"
-                              style={{ border: 0 }}
-                              allowFullScreen
-                              loading="lazy"
-                              referrerPolicy="no-referrer-when-downgrade"
-                            />
-                          </div>
-                        ) : team.google_maps_url ? (
-                          <a
-                            href={team.google_maps_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full py-2.5 bg-[#990000] hover:bg-[#fe0000] text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Ver en Google Maps
-                          </a>
-                        ) : (
-                          <p className="text-xs text-slate-400 italic">No hay mapa configurado.</p>
-                        )}
-                      </div>
-                    </SectionCard>
-                  </div>
-
+                <div className="space-y-6">
+                  <TrainingSchedule sessionsByDow={sessionsByDow} />
                 </div>
               ) : (
                 <div className="max-w-2xl mx-auto space-y-6 text-left">

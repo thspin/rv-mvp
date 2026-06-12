@@ -25,6 +25,8 @@ import { AtletasTab } from "./components/atletas-tab"
 import { PagosTab } from "./components/pagos-tab"
 import { AptosTab } from "./components/aptos-tab"
 import { HistorialTab } from "./components/historial-tab"
+import TrainingSchedule from "@/components/TrainingSchedule"
+import SessionForm from "@/components/SessionForm"
 import {
   Users,
   UserPlus,
@@ -35,7 +37,12 @@ import {
   LayoutDashboard,
   ArrowLeft,
   X,
+  Calendar,
 } from "lucide-react"
+
+import { Archivo } from "next/font/google"
+
+const archivoFont = Archivo({ subsets: ["latin"], weight: ["900"] })
 
 interface SubscriptionPlan {
   id: string;
@@ -51,7 +58,9 @@ export default function AdminPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [team, setTeam] = useState<Team | null>(null)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
-  const [activeTab, setActiveTab] = useState<"general" | "equipo" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("general")
+  const [activeTab, setActiveTab] = useState<"general" | "equipo" | "entrenamientos" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("general")
+  const [isSessionFormOpen, setIsSessionFormOpen] = useState(false)
+  const [editingSession, setEditingSession] = useState<any | null>(null)
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
   const [modalType, setModalType] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
@@ -212,6 +221,69 @@ export default function AdminPage() {
     await loadData()
   }
 
+  const sessionsByDow = (() => {
+    try {
+      return teamForm.instructions ? JSON.parse(teamForm.instructions) : { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+    } catch {
+      return { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+    }
+  })();
+
+  async function handleSaveSession(session: any) {
+    if (!team) return;
+    const dow = Number(session.dow);
+    const currentSessions = sessionsByDow[dow] ?? [];
+    let updatedSessions;
+    const exists = currentSessions.some((s: any) => s.id === session.id);
+    if (exists) {
+      updatedSessions = currentSessions.map((s: any) => s.id === session.id ? session : s);
+    } else {
+      updatedSessions = [...currentSessions, session];
+    }
+
+    let nextSessionsByDow = { ...sessionsByDow, [dow]: updatedSessions };
+    if (editingSession && Number(editingSession.dow) !== dow) {
+      const oldDow = Number(editingSession.dow);
+      nextSessionsByDow[oldDow] = (nextSessionsByDow[oldDow] ?? []).filter((s: any) => s.id !== session.id);
+    }
+
+    const updatedInstructions = JSON.stringify(nextSessionsByDow);
+    const updatedForm = { ...teamForm, instructions: updatedInstructions };
+    setTeamForm(updatedForm);
+
+    try {
+      await updateTeam(team.id, updatedForm);
+      setIsSessionFormOpen(false);
+      setEditingSession(null);
+      success("Sesión guardada correctamente");
+      await loadData();
+    } catch (err) {
+      error("Error al guardar la sesión");
+    }
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    if (!team) return;
+    let nextSessionsByDow = { ...sessionsByDow };
+    for (const dow in nextSessionsByDow) {
+      nextSessionsByDow[Number(dow)] = (nextSessionsByDow[Number(dow)] ?? []).filter((s: any) => s.id !== sessionId);
+    }
+
+    const updatedInstructions = JSON.stringify(nextSessionsByDow);
+    const updatedForm = { ...teamForm, instructions: updatedInstructions };
+    setTeamForm(updatedForm);
+
+    try {
+      await updateTeam(team.id, updatedForm);
+      setIsSessionFormOpen(false);
+      setEditingSession(null);
+      success("Sesión eliminada correctamente");
+      await loadData();
+    } catch (err) {
+      error("Error al eliminar la sesión");
+    }
+  }
+
   async function handleSaveTeam() {
     if (!team) return
     try {
@@ -281,6 +353,7 @@ export default function AdminPage() {
             {[
               { id: "general", label: "Panel General", count: 0, icon: LayoutDashboard },
               { id: "equipo", label: "Mi Equipo", count: 0, icon: Settings },
+              { id: "entrenamientos", label: "Entrenamientos", count: 0, icon: Calendar },
               { id: "solicitudes", label: "Solicitudes", count: pendingSolicitudes.length, icon: UserPlus },
               { id: "atletas", label: "Atletas", count: activeMembers.length, icon: Users },
               { id: "pagos", label: "Pagos", count: pendingPagos.length, icon: CreditCard },
@@ -506,6 +579,39 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Entrenamientos Tab */}
+        {activeTab === "entrenamientos" && team && (
+          <div className="bg-card rounded-[32px] p-6 border border-border">
+            <h2 className={`${archivoFont?.className || ''} text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight mb-6 text-left`}>
+              Planificación de Entrenamientos
+            </h2>
+            {isSessionFormOpen ? (
+              <SessionForm
+                initialData={editingSession}
+                onSave={handleSaveSession}
+                onDelete={handleDeleteSession}
+                onCancel={() => {
+                  setIsSessionFormOpen(false);
+                  setEditingSession(null);
+                }}
+              />
+            ) : (
+              <TrainingSchedule
+                sessionsByDow={sessionsByDow}
+                isAdmin={true}
+                onAddSession={() => {
+                  setEditingSession(null);
+                  setIsSessionFormOpen(true);
+                }}
+                onEditSession={(session) => {
+                  setEditingSession(session);
+                  setIsSessionFormOpen(true);
+                }}
+              />
+            )}
           </div>
         )}
 
