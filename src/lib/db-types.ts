@@ -13,6 +13,17 @@ export interface Team {
   special_instructions?: string;
   google_maps_url?: string;
   subscription_plans?: string;
+}
+
+export type MutationResult =
+  | { success: true }
+  | { success: false; error: string; code?: 'DB_ERROR' | 'UNKNOWN' | 'DUPLICATE' | 'NOT_FOUND' };
+
+export const ok = (): MutationResult => ({ success: true });
+
+export function fail(error: string, code?: 'DB_ERROR' | 'UNKNOWN' | 'DUPLICATE' | 'NOT_FOUND'): MutationResult {
+  return code ? { success: false, error, code } : { success: false, error }
+}
   bank_cbu?: string;
   bank_alias?: string;
 }

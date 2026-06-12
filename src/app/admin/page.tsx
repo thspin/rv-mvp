@@ -219,12 +219,14 @@ export default function AdminPage() {
   };
 
   async function handleAcceptSolicitud(athlete: Athlete) {
-    await updateAthleteTeamStatus(athlete.email, "activo")
+    const result = await updateAthleteTeamStatus(athlete.email, "activo")
+    if (!result.success) error(result.error)
     await loadData()
   }
 
   async function handleRejectSolicitud(athlete: Athlete) {
-    await updateAthleteTeamStatus(athlete.email, null)
+    const result = await updateAthleteTeamStatus(athlete.email, null)
+    if (!result.success) error(result.error)
     await loadData()
   }
 
@@ -288,7 +290,8 @@ export default function AdminPage() {
 
   async function confirmExpelAthlete() {
     if (!pendingActionAthlete) return
-    await updateAthleteTeamStatus(pendingActionAthlete.email, null)
+    const result = await updateAthleteTeamStatus(pendingActionAthlete.email, null)
+    if (!result.success) error(result.error)
     setPendingActionAthlete(null)
     await loadData()
     await loadAtletasPage(atletasPage)
@@ -324,15 +327,15 @@ export default function AdminPage() {
     const updatedForm = { ...teamForm, instructions: updatedInstructions };
     setTeamForm(updatedForm);
 
-    try {
-      await updateTeam(team.id, updatedForm);
-      setIsSessionFormOpen(false);
-      setEditingSession(null);
-      success("Sesión guardada correctamente");
-      await loadData();
-    } catch (err) {
-      error("Error al guardar la sesión");
+    const result = await updateTeam(team.id, updatedForm);
+    if (!result.success) {
+      error(result.error || "Error al guardar la sesión");
+      return;
     }
+    setIsSessionFormOpen(false);
+    setEditingSession(null);
+    success("Sesión guardada correctamente");
+    await loadData();
   }
 
   async function handleDeleteSession(sessionId: string) {
@@ -346,26 +349,26 @@ export default function AdminPage() {
     const updatedForm = { ...teamForm, instructions: updatedInstructions };
     setTeamForm(updatedForm);
 
-    try {
-      await updateTeam(team.id, updatedForm);
-      setIsSessionFormOpen(false);
-      setEditingSession(null);
-      success("Sesión eliminada correctamente");
-      await loadData();
-    } catch (err) {
-      error("Error al eliminar la sesión");
+    const result = await updateTeam(team.id, updatedForm);
+    if (!result.success) {
+      error(result.error || "Error al eliminar la sesión");
+      return;
     }
+    setIsSessionFormOpen(false);
+    setEditingSession(null);
+    success("Sesión eliminada correctamente");
+    await loadData();
   }
 
   async function handleSaveTeam() {
     if (!team) return
-    try {
-      await updateTeam(team.id, teamForm)
-      await loadData()
-      success("Equipo actualizado correctamente")
-    } catch (err) {
-      error("Error al actualizar el equipo")
+    const result = await updateTeam(team.id, teamForm)
+    if (!result.success) {
+      error(result.error || "Error al actualizar el equipo")
+      return
     }
+    await loadData()
+    success("Equipo actualizado correctamente")
   }
 
   if (authLoading || dataLoading) {
@@ -697,15 +700,27 @@ export default function AdminPage() {
           <PagosTab
             pendingPagos={pendingPagos}
             onApprove={async (athlete, amount, method) => {
-              await approvePaymentAsync(athlete.email, athlete.name || "Sin nombre", amount, method);
+              const result = await approvePaymentAsync(athlete.email, athlete.name || "Sin nombre", amount, method);
+              if (!result.success) {
+                error(result.error);
+                return;
+              }
               await loadData();
             }}
             onReject={async (athlete, reason) => {
-              await rejectPaymentAsync(athlete.email, reason);
+              const result = await rejectPaymentAsync(athlete.email, reason);
+              if (!result.success) {
+                error(result.error);
+                return;
+              }
               await loadData();
             }}
             onCondone={async (athlete) => {
-              await condonePaymentAsync(athlete.email, athlete.name || "Sin nombre");
+              const result = await condonePaymentAsync(athlete.email, athlete.name || "Sin nombre");
+              if (!result.success) {
+                error(result.error);
+                return;
+              }
               await loadData();
             }}
           />

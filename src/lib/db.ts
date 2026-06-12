@@ -8,8 +8,9 @@ import { getPricingConfig } from '@/lib/settings'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { rateLimitAction } from '@/lib/rate-limit'
-import type { Team, Athlete, Payment, ActivityLog } from '@/lib/db-types'
-import { fromDbAthlete } from '@/lib/db-types'
+import * as Sentry from '@sentry/nextjs'
+import type { Team, Athlete, Payment, ActivityLog, MutationResult } from '@/lib/db-types'
+import { fromDbAthlete, ok, fail } from '@/lib/db-types'
 import {
   createNotificationInternal,
   logActivityInternal,
@@ -167,7 +168,7 @@ export async function getTeamById(id: string): Promise<Team | null> {
   return getTeamAsync(id);
 }
 
-export async function updateTeamInstructionsAsync(instructions: string): Promise<void> {
+export async function updateTeamInstructionsAsync(instructions: string): Promise<MutationResult> {
   try {
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
@@ -179,12 +180,18 @@ export async function updateTeamInstructionsAsync(instructions: string): Promise
         .eq('id', activeTeam.id);
       if (error) throw error;
     }
+    return ok()
   } catch (err) {
-    console.error('Error in updateTeamInstructionsAsync:', err);
+    Sentry.captureException(err, {
+      tags: { source: 'db.updateTeamInstructionsAsync' },
+      extra: { instructions },
+    })
+    console.error('Error in updateTeamInstructionsAsync:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
-export async function updateTeam(id: string, updates: Partial<Team>): Promise<void> {
+export async function updateTeam(id: string, updates: Partial<Team>): Promise<MutationResult> {
   try {
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
@@ -193,8 +200,14 @@ export async function updateTeam(id: string, updates: Partial<Team>): Promise<vo
       .update(updates)
       .eq('id', id);
     if (error) throw error;
+    return ok()
   } catch (err) {
-    console.error('Error in updateTeam:', err);
+    Sentry.captureException(err, {
+      tags: { source: 'db.updateTeam' },
+      extra: { teamId: id, updates },
+    })
+    console.error('Error in updateTeam:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
@@ -431,7 +444,10 @@ export async function uploadMedicalCertificateAsync(email: string, certName: str
 
 // =========== Admin Operations ===========
 
-export async function updateAthleteTeamStatus(email: string, status: 'activo' | 'pendiente' | null): Promise<void> {
+export async function updateAthleteTeamStatus(
+  email: string,
+  status: 'activo' | 'pendiente' | null,
+): Promise<MutationResult> {
   try {
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
@@ -469,8 +485,14 @@ export async function updateAthleteTeamStatus(email: string, status: 'activo' | 
         team_status: status,
       });
     }
+    return ok()
   } catch (err) {
-    console.error('Error in updateAthleteTeamStatus:', err);
+    Sentry.captureException(err, {
+      tags: { source: 'db.updateAthleteTeamStatus' },
+      extra: { email, status },
+    })
+    console.error('Error in updateAthleteTeamStatus:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
@@ -558,7 +580,12 @@ async function checkDuplicatePayment(email: string): Promise<boolean> {
   return !!data;
 }
 
-export async function addPaymentRecord(email: string, name: string, amount: number, method: string): Promise<void> {
+export async function addPaymentRecord(
+  email: string,
+  name: string,
+  amount: number,
+  method: string,
+): Promise<MutationResult> {
   try {
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
@@ -566,7 +593,7 @@ export async function addPaymentRecord(email: string, name: string, amount: numb
     const isDuplicate = await checkDuplicatePayment(email);
     if (isDuplicate) {
       console.warn(`Payment for ${email} this month already exists. Skipping insertion for idempotency.`);
-      return;
+      return fail(`Pago duplicado para ${email} en el mes actual`, 'DUPLICATE')
     }
 
     const { error } = await supabase.from('payments').insert({
@@ -578,12 +605,23 @@ export async function addPaymentRecord(email: string, name: string, amount: numb
     });
 
     if (error) throw error;
+    return ok()
   } catch (err) {
-    console.error('Error in addPaymentRecord:', err);
+    Sentry.captureException(err, {
+      tags: { source: 'db.addPaymentRecord' },
+      extra: { email, name, amount, method },
+    })
+    console.error('Error in addPaymentRecord:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
-export async function processPaymentAsync(email: string, approve: boolean, method?: string, reason?: string): Promise<void> {
+export async function processPaymentAsync(
+  email: string,
+  approve: boolean,
+  method?: string,
+  reason?: string,
+): Promise<MutationResult> {
   try {
     const session = await requireAdmin()
     const supabase = createAuthenticatedClient(session.user.id)
@@ -613,20 +651,33 @@ export async function processPaymentAsync(email: string, approve: boolean, metho
       if (athleteError) throw athleteError;
 
       if (athlete) {
-        await addPaymentRecord(email, athlete.name, pricing.amount, method || 'Transferencia');
+        const result = await addPaymentRecord(email, athlete.name, pricing.amount, method || 'Transferencia')
+        if (!result.success) return result
       }
+      return ok()
     } else {
       await updateAthleteProfileAsync(email, {
         payment_status: 'Vencido',
         payment_motivo_rechazo: reason || 'Comprobante no valido',
       });
+      return ok()
     }
   } catch (err) {
-    console.error('Error in processPaymentAsync:', err);
+    Sentry.captureException(err, {
+      tags: { source: 'db.processPaymentAsync' },
+      extra: { email, approve, method, reason },
+    })
+    console.error('Error in processPaymentAsync:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
-export async function processCertificateAsync(email: string, approve: boolean, months?: number, reason?: string): Promise<void> {
+export async function processCertificateAsync(
+  email: string,
+  approve: boolean,
+  months?: number,
+  reason?: string,
+): Promise<MutationResult> {
   try {
     await requireAdmin()
     if (approve) {
@@ -644,8 +695,14 @@ export async function processCertificateAsync(email: string, approve: boolean, m
         apto_medico_motivo_rechazo: reason || 'Certificado medico borroso o no legible',
       });
     }
+    return ok()
   } catch (err) {
-    console.error('Error in processCertificateAsync:', err);
+    Sentry.captureException(err, {
+      tags: { source: 'db.processCertificateAsync' },
+      extra: { email, approve, months, reason },
+    })
+    console.error('Error in processCertificateAsync:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
@@ -863,7 +920,7 @@ export async function approvePaymentAsync(
   name: string,
   amount: number,
   method: string
-): Promise<void> {
+): Promise<MutationResult> {
   const session = await requireAdmin();
   const supabase = createAuthenticatedClient(session.user.id)
 
@@ -888,7 +945,19 @@ export async function approvePaymentAsync(
     })
     .eq('email', email);
 
-  await addPaymentRecord(email, name, amount, method);
+  // The athlete update happened. If the payment record insert fails, the
+  // system is in an inconsistent state (athlete marked Pagado but no
+  // payment row). Surface this loudly to the caller.
+  const paymentResult = await addPaymentRecord(email, name, amount, method);
+  if (!paymentResult.success) {
+    Sentry.captureException(new Error(`approvePaymentAsync: payment record failed for ${email}`), {
+      tags: { source: 'db.approvePaymentAsync' },
+      extra: { email, name, amount, method, paymentError: paymentResult.error },
+      level: 'error',
+    })
+    return paymentResult
+  }
+
   await logActivityAsync('pagos', 'aprobado', name, email, `Pago aprobado de $${amount.toLocaleString()} via ${method}`);
 
   if (athlete && athlete.user_id) {
@@ -898,37 +967,51 @@ export async function approvePaymentAsync(
       `Tu pago de $${amount.toLocaleString()} mediante ${method} ha sido aprobado con exito.`
     );
   }
+  return ok()
 }
 
-export async function rejectPaymentAsync(email: string, rejectReason: string): Promise<void> {
-  const session = await requireAdmin();
-  const supabase = createAuthenticatedClient(session.user.id)
+export async function rejectPaymentAsync(email: string, rejectReason: string): Promise<MutationResult> {
+  try {
+    const session = await requireAdmin();
+    const supabase = createAuthenticatedClient(session.user.id)
 
-  const { data: athlete } = await supabase
-    .from('athletes')
-    .select('user_id, name')
-    .eq('email', email)
-    .maybeSingle();
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('user_id, name')
+      .eq('email', email)
+      .maybeSingle();
 
-  await updateAthleteProfileAsync(email, {
-    payment_status: 'Pendiente_Pago',
-    payment_receipt_url: '',
-    payment_motivo_rechazo: rejectReason,
-  });
+    await updateAthleteProfileAsync(email, {
+      payment_status: 'Pendiente_Pago',
+      payment_receipt_url: '',
+      payment_motivo_rechazo: rejectReason,
+    });
 
-  const name = athlete?.name || 'Atleta';
-  await logActivityAsync('pagos', 'rechazado', name, email, `Comprobante de pago rechazado. Motivo: ${rejectReason}`);
+    const name = athlete?.name || 'Atleta';
+    await logActivityAsync('pagos', 'rechazado', name, email, `Comprobante de pago rechazado. Motivo: ${rejectReason}`);
 
-  if (athlete && athlete.user_id) {
-    await createNotification(
-      athlete.user_id,
-      "Comprobante rechazado",
-      "Tu comprobante de pago fue rechazado. Por favor, sube uno nuevo."
-    );
+    if (athlete && athlete.user_id) {
+      await createNotification(
+        athlete.user_id,
+        "Comprobante rechazado",
+        "Tu comprobante de pago fue rechazado. Por favor, sube uno nuevo."
+      );
+    }
+    return ok()
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { source: 'db.rejectPaymentAsync' },
+      extra: { email, rejectReason },
+    })
+    console.error('Error in rejectPaymentAsync:', err)
+    return fail(String(err), 'DB_ERROR')
   }
 }
 
-export async function condonePaymentAsync(email: string, name: string): Promise<void> {
+export async function condonePaymentAsync(
+  email: string,
+  name: string,
+): Promise<MutationResult> {
   const session = await requireAdmin();
   const supabase = createAuthenticatedClient(session.user.id)
 
@@ -944,7 +1027,16 @@ export async function condonePaymentAsync(email: string, name: string): Promise<
     mora_months: 0,
   });
 
-  await addPaymentRecord(email, name, 0, 'Condonado');
+  const paymentResult = await addPaymentRecord(email, name, 0, 'Condonado');
+  if (!paymentResult.success) {
+    Sentry.captureException(new Error(`condonePaymentAsync: payment record failed for ${email}`), {
+      tags: { source: 'db.condonePaymentAsync' },
+      extra: { email, name, paymentError: paymentResult.error },
+      level: 'error',
+    })
+    return paymentResult
+  }
+
   await logActivityAsync('pagos', 'condonado', name, email, 'Pago de cuota mensual condonado');
 
   if (athlete && athlete.user_id) {
@@ -954,4 +1046,5 @@ export async function condonePaymentAsync(email: string, name: string): Promise<
       `El pago de tu cuota mensual ha sido condonado por el administrador.`
     );
   }
+  return ok()
 }
