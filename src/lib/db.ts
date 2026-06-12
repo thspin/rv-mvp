@@ -2,8 +2,9 @@
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { createAuthenticatedClient } from '@/lib/supabase/authenticated'
-import { addMonthsWithClamp } from '@/lib/utils'
+import { addMonthsWithClamp, computeNextPaymentDue } from '@/lib/utils'
 import { getCurrentUserAction } from '@/lib/actions'
+import { getPricingConfig } from '@/lib/settings'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { rateLimitAction } from '@/lib/rate-limit'
@@ -136,7 +137,7 @@ function fromDbPayment(row: Record<string, unknown>): Payment {
 // =========== Column Projections ===========
 
 const TEAM_COLUMNS = 'id, name, description, whatsapp_url, training_days, coach, instructions, location, logo_url, founded_date, specialties, special_instructions, google_maps_url, subscription_plans, bank_cbu, bank_alias';
-const ATHLETE_COLUMNS = 'id, user_id, email, name, role, onboarding_complete, dni, phone, talle_remera, contacto_emergencia_name, contacto_emergencia_phone, grupo_sanguineo, alergias, afecciones, apto_medico_url, apto_medico_status, apto_medico_vencimiento, apto_medico_motivo_rechazo, team_id, team_status, payment_status, payment_receipt_url, payment_method, payment_motivo_rechazo, genero, fecha_nacimiento, tipo_documento, pais, provincia, ciudad, codigo_postal, domicilio, documento_url, documento_status, avatar_url, mora_months, subscription_plan_id';
+const ATHLETE_COLUMNS = 'id, user_id, email, name, role, onboarding_complete, dni, phone, talle_remera, contacto_emergencia_name, contacto_emergencia_phone, grupo_sanguineo, alergias, afecciones, apto_medico_url, apto_medico_status, apto_medico_vencimiento, apto_medico_motivo_rechazo, team_id, team_status, payment_status, payment_receipt_url, payment_method, payment_motivo_rechazo, genero, fecha_nacimiento, tipo_documento, pais, provincia, ciudad, codigo_postal, domicilio, documento_url, documento_status, avatar_url, mora_months, subscription_plan_id, next_payment_due, last_payment_date';
 const PAYMENT_COLUMNS = 'id, athlete_email, athlete_name, amount, method, created_at, status';
 
 // =========== Team Operations ===========
@@ -211,26 +212,78 @@ export async function getTeamsAsync(): Promise<Team[]> {
 
 // =========== Athletes Operations ===========
 
-export async function getAthletesAsync(): Promise<Athlete[]> {
+export interface PaginatedAthletes {
+  athletes: Athlete[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getAthletesAsync(opts?: { page?: number; pageSize?: number }): Promise<PaginatedAthletes> {
   try {
     const session = await requireAdmin()
     const rl = await rateLimitAction(session.user.id, 'getAthletes', 60, '1 m')
     if (!rl.success) throw new Error(rl.error)
     const supabase = createAuthenticatedClient(session.user.id)
-    const { data, error } = await supabase
+    const page = Math.max(1, opts?.page ?? 1)
+    const pageSize = Math.max(1, Math.min(100, opts?.pageSize ?? 20))
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data, error, count } = await supabase
       .from('athletes')
-      .select(ATHLETE_COLUMNS)
-      .order('name');
+      .select(ATHLETE_COLUMNS, { count: 'exact' })
+      .order('name')
+      .range(from, to);
     if (error) throw error;
-    return data ? data.map(fromDbAthlete) : [];
+    return {
+      athletes: data ? data.map(fromDbAthlete) : [],
+      total: count ?? 0,
+      page,
+      pageSize,
+    }
   } catch (err) {
     console.error('Error in getAthletesAsync:', err);
-    return [];
+    return { athletes: [], total: 0, page: 1, pageSize: 20 }
   }
 }
 
-export async function getAllAthletes(): Promise<Athlete[]> {
-  return getAthletesAsync();
+export async function getAllAthletes(opts?: { page?: number; pageSize?: number }): Promise<Athlete[]> {
+  const res = await getAthletesAsync(opts)
+  return res.athletes
+}
+
+export async function getPaginatedAthletesByTeamStatusAsync(
+  teamStatus: 'pendiente' | 'activo',
+  opts?: { page?: number; pageSize?: number },
+): Promise<PaginatedAthletes> {
+  try {
+    const session = await requireAdmin()
+    const rl = await rateLimitAction(session.user.id, 'getAthletes', 60, '1 m')
+    if (!rl.success) throw new Error(rl.error)
+    const supabase = createAuthenticatedClient(session.user.id)
+    const page = Math.max(1, opts?.page ?? 1)
+    const pageSize = Math.max(1, Math.min(100, opts?.pageSize ?? 20))
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data, error, count } = await supabase
+      .from('athletes')
+      .select(ATHLETE_COLUMNS, { count: 'exact' })
+      .eq('team_status', teamStatus)
+      .order('name')
+      .range(from, to)
+    if (error) throw error
+    return {
+      athletes: data ? data.map(fromDbAthlete) : [],
+      total: count ?? 0,
+      page,
+      pageSize,
+    }
+  } catch (err) {
+    console.error('Error in getPaginatedAthletesByTeamStatusAsync:', err)
+    return { athletes: [], total: 0, page: 1, pageSize: 20 }
+  }
 }
 
 export async function getTeamMembers(teamId: string): Promise<Athlete[]> {
@@ -390,13 +443,22 @@ export async function updateAthleteTeamStatus(email: string, status: 'activo' | 
         payment_method: '',
         payment_motivo_rechazo: '',
         mora_months: 0,
+        next_payment_due: null,
+        last_payment_date: null,
       });
       await logActivityAsync('atletas', 'baja', name, email, 'Atleta dado de baja del equipo');
     } else if (status === 'activo') {
-      await updateAthleteProfileAsync(email, {
-        team_status: 'activo',
-        payment_status: 'Pendiente_Pago',
-      });
+      const pricing = await getPricingConfig()
+      const nextDue = computeNextPaymentDue(new Date(), pricing.dueDay).toISOString()
+      await supabase
+        .from('athletes')
+        .update({
+          team_status: 'activo',
+          payment_status: 'Pendiente_Pago',
+          next_payment_due: nextDue,
+          mora_months: 0,
+        })
+        .eq('email', email)
       await logActivityAsync('atletas', 'alta', name, email, 'Atleta activado en el equipo');
     } else {
       await updateAthleteProfileAsync(email, {
@@ -523,11 +585,20 @@ export async function processPaymentAsync(email: string, approve: boolean, metho
     const supabase = createAuthenticatedClient(session.user.id)
 
     if (approve) {
-      await updateAthleteProfileAsync(email, {
-        payment_status: 'Pagado',
-        payment_method: method || 'Transferencia',
-        payment_motivo_rechazo: undefined,
-      });
+      const pricing = await getPricingConfig()
+      const now = new Date()
+      const nextDue = computeNextPaymentDue(now, pricing.dueDay).toISOString()
+      await supabase
+        .from('athletes')
+        .update({
+          payment_status: 'Pagado',
+          payment_method: method || 'Transferencia',
+          payment_motivo_rechazo: null,
+          last_payment_date: now.toISOString(),
+          next_payment_due: nextDue,
+          mora_months: 0,
+        })
+        .eq('email', email)
 
       const { data: athlete, error: athleteError } = await supabase
         .from('athletes')
@@ -538,7 +609,7 @@ export async function processPaymentAsync(email: string, approve: boolean, metho
       if (athleteError) throw athleteError;
 
       if (athlete) {
-        await addPaymentRecord(email, athlete.name, 17000, method || 'Transferencia');
+        await addPaymentRecord(email, athlete.name, pricing.amount, method || 'Transferencia');
       }
     } else {
       await updateAthleteProfileAsync(email, {
@@ -781,11 +852,20 @@ export async function approvePaymentAsync(
     .eq('email', email)
     .maybeSingle();
 
-  await updateAthleteProfileAsync(email, {
-    payment_status: 'Pagado',
-    payment_receipt_url: '',
-    mora_months: 0,
-  });
+  const pricing = await getPricingConfig()
+  const now = new Date()
+  const nextDue = computeNextPaymentDue(now, pricing.dueDay).toISOString()
+  await supabase
+    .from('athletes')
+    .update({
+      payment_status: 'Pagado',
+      payment_receipt_url: '',
+      payment_motivo_rechazo: null,
+      mora_months: 0,
+      last_payment_date: now.toISOString(),
+      next_payment_due: nextDue,
+    })
+    .eq('email', email);
 
   await addPaymentRecord(email, name, amount, method);
   await logActivityAsync('pagos', 'aprobado', name, email, `Pago aprobado de $${amount.toLocaleString()} via ${method}`);
@@ -898,4 +978,148 @@ export async function checkUpcomingExpirations(): Promise<{
   }
 
   return { notified30, notified15, notified7, expired }
+}
+
+type PaymentReminderType = 'pre_due_7d' | 'pre_due_3d' | 'due_today' | 'overdue_1d' | 'overdue_7d'
+
+interface PaymentReminderDescriptor {
+  type: PaymentReminderType
+  matchDays: number
+  title: string
+  build: (dueDateStr: string) => string
+}
+
+const PAYMENT_REMINDERS: PaymentReminderDescriptor[] = [
+  {
+    type: 'pre_due_7d',
+    matchDays: 7,
+    title: 'Tu cuota vence pronto',
+    build: (d) => `Tu cuota mensual vence el ${d}. Ya podes pagarla desde la app.`,
+  },
+  {
+    type: 'pre_due_3d',
+    matchDays: 3,
+    title: 'Recordatorio de cuota',
+    build: (d) => `Tu cuota vence en 3 dias (${d}). No te olvides de subir el comprobante.`,
+  },
+  {
+    type: 'due_today',
+    matchDays: 0,
+    title: 'Tu cuota vence hoy',
+    build: (d) => `Hoy vence tu cuota (${d}). Sube tu comprobante para no entrar en mora.`,
+  },
+  {
+    type: 'overdue_1d',
+    matchDays: -1,
+    title: 'Cuota vencida',
+    build: (d) => `Tu cuota vencio el ${d}. Regulariza tu pago para mantener tu lugar.`,
+  },
+  {
+    type: 'overdue_7d',
+    matchDays: -7,
+    title: 'Cuota vencida hace 7 dias',
+    build: (d) => `Tu cuota esta vencida desde el ${d}. Si no regularizas, podes perder el acceso a los entrenamientos.`,
+  },
+]
+
+export async function checkUpcomingPaymentDues(): Promise<{
+  preDue7: number
+  preDue3: number
+  dueToday: number
+  overdue1: number
+  overdue7: number
+}> {
+  const supabase = createServiceClient()
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+
+  const { data: candidates, error } = await supabase
+    .from('athletes')
+    .select('id, user_id, name, email, next_payment_due, mora_months')
+    .eq('team_status', 'activo')
+    .neq('payment_status', 'Pagado')
+    .not('next_payment_due', 'is', null)
+
+  if (error) {
+    console.error('[cron] checkUpcomingPaymentDues query failed:', error)
+    return { preDue7: 0, preDue3: 0, dueToday: 0, overdue1: 0, overdue7: 0 }
+  }
+
+  if (!candidates?.length) {
+    return { preDue7: 0, preDue3: 0, dueToday: 0, overdue1: 0, overdue7: 0 }
+  }
+
+  const counts: Record<PaymentReminderType, number> = {
+    pre_due_7d: 0,
+    pre_due_3d: 0,
+    due_today: 0,
+    overdue_1d: 0,
+    overdue_7d: 0,
+  }
+
+  for (const a of candidates) {
+    if (!a.next_payment_due || !a.user_id) continue
+
+    const due = new Date(a.next_payment_due)
+    due.setHours(0, 0, 0, 0)
+    const daysLeft = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    const dueStr = due.toLocaleDateString('es-AR')
+
+    if (daysLeft > 7) continue
+
+    for (const r of PAYMENT_REMINDERS) {
+      if (daysLeft !== r.matchDays) continue
+      const sent = await trySendPaymentReminder(a.id, a.user_id, r.type, r.title, r.build(dueStr))
+      if (sent) counts[r.type]++
+      break
+    }
+
+    if (daysLeft < 0) {
+      const mora = Math.min(99, Math.abs(daysLeft))
+      const currentMora = a.mora_months ?? 0
+      if (mora > currentMora) {
+        await supabase
+          .from('athletes')
+          .update({ mora_months: mora, payment_status: 'Vencido' })
+          .eq('id', a.id)
+      } else if (currentMora === 0) {
+        await supabase
+          .from('athletes')
+          .update({ payment_status: 'Vencido' })
+          .eq('id', a.id)
+      }
+    }
+  }
+
+  return {
+    preDue7:  counts.pre_due_7d,
+    preDue3:  counts.pre_due_3d,
+    dueToday: counts.due_today,
+    overdue1: counts.overdue_1d,
+    overdue7: counts.overdue_7d,
+  }
+}
+
+async function trySendPaymentReminder(
+  athleteId: string,
+  userId: string,
+  type: PaymentReminderType,
+  title: string,
+  message: string,
+): Promise<boolean> {
+  const supabase = createServiceClient()
+  const { error: logError } = await supabase
+    .from('payment_reminder_log')
+    .insert({ athlete_id: athleteId, reminder_type: type })
+
+  if (logError) {
+    if (logError.code === '23505') {
+      return false
+    }
+    console.error('[cron] payment_reminder_log insert failed:', logError)
+    return false
+  }
+
+  await createNotification(userId, title, message)
+  return true
 }

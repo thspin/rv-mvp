@@ -119,7 +119,9 @@ CREATE TABLE IF NOT EXISTS athletes (
     documento_status TEXT CHECK (documento_status IN ('no_entregado', 'pendiente_verificacion', 'vigente', 'rechazado')) DEFAULT 'no_entregado',
     avatar_url TEXT,
     mora_months INTEGER DEFAULT 0,
-    subscription_plan_id TEXT
+    subscription_plan_id TEXT,
+    next_payment_due  TIMESTAMPTZ,
+    last_payment_date TIMESTAMPTZ
 );
 
 -- 5. Crear tabla de Pagos (payments)
@@ -201,3 +203,73 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 
 -- RLS habilitado via migracion 002_enable_rls_v2.sql
+
+-- ============================================================================
+-- 8. site_settings (key/value app-level config) - ver supabase/migrations/005
+-- Almacena monthly_fee, currency, payment_due_day, etc. Editable desde admin.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS site_settings (
+    key         TEXT PRIMARY KEY,
+    value       JSONB NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by  TEXT REFERENCES "user"(id) ON DELETE SET NULL
+);
+
+INSERT INTO site_settings (key, value) VALUES
+    ('monthly_fee',     '17000'::jsonb),
+    ('currency',        '"ARS"'::jsonb),
+    ('payment_due_day', '1'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================================================
+-- 9. payment_reminder_log (idempotency for daily payment cron)
+-- UNIQUE(athlete_id, reminder_type, sent_at::date) previene duplicados.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS payment_reminder_log (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    athlete_id    UUID NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+    reminder_type TEXT NOT NULL,
+    sent_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (athlete_id, reminder_type, (sent_at::date))
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_reminder_log_athlete
+    ON payment_reminder_log (athlete_id);
+
+CREATE INDEX IF NOT EXISTS idx_athletes_next_payment_due_active
+    ON athletes (next_payment_due)
+    WHERE team_status = 'activo' AND payment_status IS DISTINCT FROM 'Pagado';
+
+-- ============================================================================
+-- RLS: site_settings
+-- Lectura: cualquier usuario autenticado. Escritura: solo admin.
+-- ============================================================================
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "site_settings_select_auth"   ON site_settings;
+DROP POLICY IF EXISTS "site_settings_admin_write"   ON site_settings;
+DROP POLICY IF EXISTS "site_settings_admin_update"  ON site_settings;
+
+CREATE POLICY "site_settings_select_auth"
+    ON site_settings FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "site_settings_admin_write"
+    ON site_settings FOR INSERT TO authenticated
+    WITH CHECK (is_admin(auth.uid()::TEXT));
+
+CREATE POLICY "site_settings_admin_update"
+    ON site_settings FOR UPDATE TO authenticated
+    USING (is_admin(auth.uid()::TEXT))
+    WITH CHECK (is_admin(auth.uid()::TEXT));
+
+-- ============================================================================
+-- RLS: payment_reminder_log
+-- Lectura: solo admin. Inserción: solo service_role (cron).
+-- ============================================================================
+ALTER TABLE payment_reminder_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "payment_reminder_log_select_admin" ON payment_reminder_log;
+
+CREATE POLICY "payment_reminder_log_select_admin"
+    ON payment_reminder_log FOR SELECT TO authenticated
+    USING (is_admin(auth.uid()::TEXT));

@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Navbar from "@/components/Navbar"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { 
-  getAllAthletes, 
-  getTeamById, 
+import {
+  getAllAthletes,
+  getTeamById,
   updateTeam,
   updateAthleteTeamStatus,
   updateAthleteAptoStatus,
@@ -14,10 +14,13 @@ import {
   rejectPaymentAsync,
   condonePaymentAsync,
   getActivityLogsAsync,
+  getPaginatedAthletesByTeamStatusAsync,
+  type PaginatedAthletes,
   Athlete,
   Team,
   ActivityLog,
 } from "@/lib/db"
+import { getPricingConfig } from "@/lib/settings"
 import { useAuthGuard } from "@/hooks/useAuthGuard"
 import { useToast } from "@/components/ui/toast"
 import { SolicitudesTab } from "./components/solicitudes-tab"
@@ -25,6 +28,7 @@ import { AtletasTab } from "./components/atletas-tab"
 import { PagosTab } from "./components/pagos-tab"
 import { AptosTab } from "./components/aptos-tab"
 import { HistorialTab } from "./components/historial-tab"
+import { ConfiguracionTab } from "./components/configuracion-tab"
 import TrainingSchedule from "@/components/TrainingSchedule"
 import SessionForm from "@/components/SessionForm"
 import {
@@ -58,7 +62,7 @@ export default function AdminPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [team, setTeam] = useState<Team | null>(null)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
-  const [activeTab, setActiveTab] = useState<"general" | "equipo" | "entrenamientos" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial">("general")
+  const [activeTab, setActiveTab] = useState<"general" | "equipo" | "entrenamientos" | "solicitudes" | "atletas" | "pagos" | "aptos" | "historial" | "configuracion">("general")
   const [isSessionFormOpen, setIsSessionFormOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<any | null>(null)
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null)
@@ -84,6 +88,9 @@ export default function AdminPage() {
   })
   const [expelConfirmOpen, setExpelConfirmOpen] = useState(false)
   const [pendingActionAthlete, setPendingActionAthlete] = useState<Athlete | null>(null)
+  const [atletasPage, setAtletasPage] = useState(1)
+  const [atletasPageSize] = useState(20)
+  const [atletasData, setAtletasData] = useState<PaginatedAthletes>({ athletes: [], total: 0, page: 1, pageSize: 20 })
   const router = useRouter()
 
   async function loadData() {
@@ -94,7 +101,10 @@ export default function AdminPage() {
       return
     }
 
-    const allAthletes = await getAllAthletes()
+    const [allAthletes, pricing] = await Promise.all([
+      getAllAthletes(),
+      getPricingConfig().catch(() => ({ amount: 17000, currency: 'ARS' as const, dueDay: 1 })),
+    ])
     setAthletes(allAthletes)
 
     if (user.team_id) {
@@ -114,8 +124,8 @@ export default function AdminPage() {
           special_instructions: teamData.special_instructions || "",
           google_maps_url: teamData.google_maps_url || "",
           subscription_plans: teamData.subscription_plans || JSON.stringify([
-            { id: "individual", name: "Individual", price: 17000, description: "Acceso completo para un atleta individual" },
-            { id: "familiar", name: "Familiar", price: 30000, description: "Acceso para el grupo familiar" }
+            { id: "individual", name: "Individual", price: pricing.amount, description: "Acceso completo para un atleta individual" },
+            { id: "familiar", name: "Familiar", price: Math.round(pricing.amount * 1.7), description: "Acceso para el grupo familiar" }
           ]),
           bank_cbu: teamData.bank_cbu || "",
           bank_alias: teamData.bank_alias || "",
@@ -135,6 +145,23 @@ export default function AdminPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  const loadAtletasPage = useCallback(async (page: number) => {
+    try {
+      const res = await getPaginatedAthletesByTeamStatusAsync('activo', { page, pageSize: atletasPageSize })
+      setAtletasData(res)
+    } catch (err) {
+      console.error('Error loading atletas page:', err)
+      setAtletasData({ athletes: [], total: 0, page, pageSize: atletasPageSize })
+    }
+  }, [atletasPageSize])
+
+  useEffect(() => {
+    if (user && activeTab === 'atletas') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadAtletasPage(atletasPage)
+    }
+  }, [user, activeTab, atletasPage, loadAtletasPage])
 
   const pendingSolicitudes = athletes.filter(a => a.team_status === "pendiente")
   const activeMembers = athletes.filter(a => a.team_status === "activo")
@@ -264,6 +291,7 @@ export default function AdminPage() {
     await updateAthleteTeamStatus(pendingActionAthlete.email, null)
     setPendingActionAthlete(null)
     await loadData()
+    await loadAtletasPage(atletasPage)
   }
 
   const sessionsByDow = (() => {
@@ -403,7 +431,8 @@ export default function AdminPage() {
               { id: "atletas", label: "Atletas", count: activeMembers.length, icon: Users },
               { id: "pagos", label: "Pagos", count: pendingPagos.length, icon: CreditCard },
               { id: "aptos", label: "Aptos Medicos", count: pendingAptos.length, icon: Stethoscope },
-              { id: "historial", label: "Historial", count: 0, icon: History }
+              { id: "historial", label: "Historial", count: 0, icon: History },
+              { id: "configuracion", label: "Configuracion", count: 0, icon: Settings }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -595,7 +624,7 @@ export default function AdminPage() {
                               value={plan.price}
                               onChange={(e) => handleUpdatePlan(idx, { price: Number(e.target.value) })}
                               className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                              placeholder="Ej. 17000"
+                              placeholder="Ej. 20000"
                             />
                           </div>
                         </div>
@@ -654,7 +683,11 @@ export default function AdminPage() {
         {/* Atletas Tab */}
         {activeTab === "atletas" && (
           <AtletasTab
-            activeMembers={activeMembers}
+            activeMembers={atletasData.athletes}
+            page={atletasData.page}
+            pageSize={atletasData.pageSize}
+            total={atletasData.total}
+            onPageChange={setAtletasPage}
             onExpel={handleExpelAthlete}
           />
         )}
@@ -692,6 +725,11 @@ export default function AdminPage() {
         {/* Historial Tab */}
         {activeTab === "historial" && (
           <HistorialTab logs={activityLogs} />
+        )}
+
+        {/* Configuracion Tab */}
+        {activeTab === "configuracion" && (
+          <ConfiguracionTab />
         )}
 
         {/* Modal de rechazo apto */}

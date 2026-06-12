@@ -21,6 +21,31 @@ export function addMonthsWithClamp(date: Date, months: number): Date {
   return result
 }
 
+export function computeNextPaymentDue(fromDate: Date, dueDay: number): Date {
+  const safeDay = Math.max(1, Math.min(28, Math.trunc(dueDay)))
+  const result = new Date(fromDate.getFullYear(), fromDate.getMonth(), safeDay, 0, 0, 0, 0)
+  if (result.getTime() <= fromDate.getTime()) {
+    result.setMonth(result.getMonth() + 1)
+  }
+  if (result.getDate() !== safeDay) {
+    result.setDate(0)
+  }
+  return result
+}
+
+export function formatCurrency(amount: number, currency: string = 'ARS'): string {
+  const code = (currency || 'ARS').toUpperCase()
+  try {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  } catch {
+    return `$${amount.toLocaleString('es-AR')}`
+  }
+}
+
 export function isProfileComplete(user: Athlete | null): boolean {
   if (!user) return false;
   const hasRequiredFields = !!(

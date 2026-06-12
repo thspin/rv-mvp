@@ -11,14 +11,16 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 *   **Auth**: Better Auth (Google OAuth) — configuración en [auth.ts](file:///src/lib/auth.ts) y [auth-client.ts](file:///src/lib/auth-client.ts).
 *   **Database**: Supabase PostgreSQL (RLS habilitado con políticas por usuario, JWT custom firmado con Supabase JWT Secret).
 *   **Storage**: Supabase Storage (uploads vía `/api/storage/upload` con validaciones, bucket privado `backups` para dumps diarios).
-*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando `createAuthenticatedClient(userId)` para operaciones con RLS y `createServiceClient()` solo para operaciones del sistema (notificaciones, logs, backups). Tipos en [db-types.ts](file:///src/lib/db-types.ts).
+*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando `createAuthenticatedClient(userId)` para operaciones con RLS y `createServiceClient()` solo para operaciones del sistema (notificaciones, logs, backups, cron). Tipos en [db-types.ts](file:///src/lib/db-types.ts).
+*   **App Settings (pricing)**: [settings.ts](file:///src/lib/settings.ts) — `getPricingConfig()` / `updatePricingConfig()` leen y escriben de la tabla `site_settings` (monto mensual, moneda, día de vencimiento). **Nunca hardcodear el valor de la cuota en el código**.
+*   **CSRF**: [csrf.ts](file:///src/lib/csrf.ts) — utilitarios de token (doble submit cookie) + el middleware en `middleware.ts` valida `Origin`/`Referer` para todas las mutaciones.
 *   **Server Actions**: [actions.ts](file:///src/lib/actions.ts) para operaciones que requieren sesión de Better Auth.
 *   **Rate Limiting**: Upstash Redis + @upstash/ratelimit (sliding window). Configurado en [rate-limit.ts](file:///src/lib/rate-limit.ts).
 *   **Error Monitoring**: Sentry (browser, server, edge) via @sentry/nextjs. Helpers en [sentry-utils.ts](file:///src/lib/sentry-utils.ts). SDK config en `sentry.{client,server,edge}.config.ts`.
 *   **Error Boundaries**: `error.tsx` y `global-error.tsx` por cada ruta (Next.js App Router). Componente reutilizable en [ErrorFallback.tsx](file:///src/components/ErrorFallback.tsx).
 *   **Daily Backups**: [backup.ts](file:///src/lib/backup.ts) — dump gzip a Supabase Storage bucket `backups`, rotación 7 días, fusionado con el cron existente (`/api/cron`).
 *   **Icons**: Lucide React.
-*   **Utility**: `cn()` (clsx + tailwind-merge) for class composition.
+*   **Utility**: `cn()` (clsx + tailwind-merge), `computeNextPaymentDue()` y `formatCurrency()` en [utils.ts](file:///src/lib/utils.ts).
 *   **Images**: `next/image` para optimización automática (AVIF/WebP).
 *   **Testing**: Vitest (unit + integration), Playwright (E2E). Config en `vitest.config.ts` y `playwright.config.ts`.
 
@@ -43,33 +45,40 @@ Estas herramientas están instaladas y disponibles via `npx`:
 ## Project Directory Structure & Boundaries
 
 *   **`src/app/`**: Contains page views and API routes.
-    *   `admin/page.tsx`: Dashboard for administrators (Coaches).
+    *   `admin/page.tsx`: Dashboard for administrators (Coaches). Tabs: general, equipo, entrenamientos, solicitudes, **atletas (paginado)**, pagos, aptos, historial, **configuracion**.
     *   `dashboard/page.tsx`: Main panel for active athletes.
     *   `equipos/page.tsx`: Directory for exploring and requesting to join teams.
     *   `perfil/page.tsx`: Personal details, emergency contact edits, onboarding.
     *   `api/auth/[...all]/route.ts`: Better Auth catch-all handler.
     *   `api/storage/[bucket]/route.ts`: Secure proxy for downloading storage files via service role credentials.
     *   `api/storage/upload/route.ts`: Upload endpoint con validación MIME/size/extension.
-    *   `api/cron/route.ts`: Daily cron (9 AM UTC) — notificaciones de vencimientos + backup automático.
+    *   `api/cron/route.ts`: Daily cron (9 AM UTC) — recordatorios de vencimientos de apto médico, **recordatorios de pago (T-7d / T-3d / T-0 / T+1d / T+7d)**, backup automático.
     *   `api/debug/route.ts`: Debug endpoint (bloqueado en producción vía `ENABLE_DEBUG_ENDPOINT`).
     *   `error.tsx`, `global-error.tsx`: Error boundaries de Next.js por ruta.
+*   **`src/app/admin/components/`**: Tabs del panel admin.
+    *   `configuracion-tab.tsx`: Edición de cuota mensual, moneda y día de vencimiento (admin only).
+    *   `atletas-tab.tsx`: Lista paginada de atletas activos (server-side, 20/pág).
 *   **`src/components/`**: Reusable component layouts. Put layout items (like navigation) here.
     *   `ErrorFallback.tsx`: UI reutilizable para error boundaries (botón reintentar + detalles técnicos en dev).
     *   `SentryUserProvider.tsx`: Client component que setea el user context de Sentry automáticamente.
+    *   `NotificationBell.tsx`: Campana con badge rojo animado y contador de no-leídas. Hace polling cada 30s.
+    *   `ui/pagination.tsx`: Componente de paginación shadcn-style (sin cards, botones planos).
 *   **`src/lib/`**:
     *   `auth.ts`: Better Auth server instance (PostgreSQL + Google OAuth + nextCookies plugin).
     *   `auth-client.ts`: Better Auth client instance (`createAuthClient` from `better-auth/react`).
     *   `actions.ts`: Server actions that require Better Auth session (e.g., `getCurrentUserAction`).
-    *   `db.ts`: All database transactions (Teams, Athletes, Payments). **Always modify database queries here, not inside client pages.**
+    *   `db.ts`: All database transactions (Teams, Athletes, Payments, Reminders). **Always modify database queries here, not inside client pages.** Incluye `getPaginatedAthletesByTeamStatusAsync()` para server-side paging y `checkUpcomingPaymentDues()` para el cron.
+    *   `settings.ts`: Pricing config (`getPricingConfig`, `updatePricingConfig`). Lee/escribe `site_settings`. **Toda la UI debe leer el monto de acá, no hardcodearlo**.
+    *   `csrf.ts`: Utilidades de token CSRF (doble submit cookie). `assertCsrfFromRequest()` se aplica en endpoints `/api/*` que mutan.
     *   `errors.ts`: Clases de error personalizadas (`RateLimitError` con `code: 'RATE_LIMITED'`).
     *   `rate-limit.ts`: Rate limiting via Upstash — `rateLimitMiddleware()` para Edge y `rateLimitAction()` para server actions. Fallback graceful si Upstash no está configurado.
     *   `backup.ts`: Daily database backup — `createBackup()` (paralelo + gzip) y `cleanOldBackups()` (rotación 7 días). Se ejecuta desde `/api/cron`.
     *   `sentry-utils.ts`: Helpers de Sentry — `setUserContext()` y `addBreadcrumb()`.
     *   `supabase/client.ts`: Browser anon client (solo para Storage uploads).
-    *   `supabase/service.ts`: Server-side service role client (solo para operaciones del sistema: createNotification, logActivityAsync, backup).
+    *   `supabase/service.ts`: Server-side service role client (solo para operaciones del sistema: createNotification, logActivityAsync, backup, cron reminders).
     *   `supabase/authenticated.ts`: Server-side authenticated client que firma JWT custom con SUPABASE_JWT_SECRET para que RLS use `auth.uid()` del Better Auth user.
-*   **`middleware.ts`**: Next.js middleware (Edge runtime) — rate limiting por IP+path para `/api/*` + protección de sesión con `getSessionCookie`. Excluye `/api/auth` del check de sesión pero sí aplica rate limit.
-*   **`next.config.ts`**: Envuelto con `withSentryConfig()` (tunnelRoute, sourcemaps deshabilitados, automaticVercelMonitors).
+*   **`middleware.ts`**: Next.js middleware (Edge runtime) — rate limiting por IP+path para `/api/*` + protección de sesión con `getSessionCookie` + **validación de `Origin`/`Referer` para todos los métodos no seguros (POST/PUT/PATCH/DELETE)**. Excluye `/api/auth`, `/api/storage/*` y `/api/cron` del check de sesión/CSRF.
+*   **`next.config.ts`**: Envuelto con `withSentryConfig()` (tunnelRoute, sourcemaps deshabilitados, automaticVercelMonitors). Headers de seguridad: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `HSTS` (solo en prod).
 *   **`instrumentation.ts`**: Hook de Next.js 15+ que inicializa Sentry server/edge según `NEXT_RUNTIME`.
 *   **`sentry.{client,server,edge}.config.ts`**: Config de Sentry por runtime. Solo se inicializa si `NEXT_PUBLIC_SENTRY_DSN` está presente.
 *   **`schema.sql`**: Database structure including Better Auth tables (user, session, account, verification) and application tables. If you modify database fields or add tables, update this file too.
@@ -80,7 +89,7 @@ Estas herramientas están instaladas y disponibles via `npx`:
 
 La autenticación se maneja con **Better Auth** (Google OAuth). Las sesiones se validan con `auth.api.getSession()` en el servidor.
 
-RLS está **habilitado** en todas las tablas de aplicación (`teams`, `athletes`, `payments`, `notifications`, `activity_logs`) con políticas que usan `auth.uid()` del JWT custom firmado con `SUPABASE_JWT_SECRET`.
+RLS está **habilitado** en todas las tablas de aplicación (`teams`, `athletes`, `payments`, `notifications`, `activity_logs`, **`site_settings`**, **`payment_reminder_log`**) con políticas que usan `auth.uid()` del JWT custom firmado con `SUPABASE_JWT_SECRET`.
 
 ### Arquitectura de clientes Supabase
 
@@ -123,6 +132,8 @@ db.ts
 - **payments**: Ver tus pagos o ser admin; solo admin inserta/modifica/elimina
 - **notifications**: Ver/actualizar solo tus notificaciones; admin puede insertar
 - **activity_logs**: Solo admin lee e inserta
+- **site_settings**: Lectura para authenticated, solo admin inserta/actualiza
+- **payment_reminder_log**: Solo admin lee; inserts los hace `service_role` desde el cron
 
 ### Función helper is_admin()
 `is_admin(check_user_id TEXT)` — `SECURITY DEFINER` con `SET search_path = ''` para evitar recursión infinita en políticas RLS.
@@ -383,3 +394,118 @@ Si el backup falla, Sentry captura la excepción con tag `source: 'backup-cron'`
 | `backups` | Privado | Dumps diarios automáticos de la DB (gzip) |
 
 **Importante**: Todos los buckets son privados. El acceso desde el cliente siempre pasa por `/api/storage/[bucket]` (downloads con ownership check) o `/api/storage/upload` (uploads con validación). Nunca exponer URLs públicas de Supabase Storage.
+
+---
+
+## Site Settings (single-tenant pricing)
+
+El MVP es de un solo club. La configuración de facturación vive en la tabla `site_settings` (key-value JSONB), no en `teams`, para que el admin pueda cambiar el monto sin redeploy.
+
+**Keys actuales:**
+- `monthly_fee` (number) — valor de la cuota mensual.
+- `currency` (`'ARS' | 'USD' | 'EUR' | 'BRL'`) — moneda por defecto.
+- `payment_due_day` (1-28) — día del mes en que vence la cuota.
+
+**Acceso desde el código:**
+```ts
+import { getPricingConfig, updatePricingConfig } from '@/lib/settings'
+
+// Server actions / server components
+const pricing = await getPricingConfig() // { amount, currency, dueDay }
+
+// UI admin (solo admins)
+await updatePricingConfig({ amount: 20000, currency: 'ARS', dueDay: 5 })
+```
+
+**Reglas:**
+1. **NUNCA hardcodear el monto de la cuota** en componentes. Leer siempre de `getPricingConfig()`.
+2. Si `site_settings` no tiene la key, `getPricingConfig()` retorna `PRICING_DEFAULTS` (definido en `db-types.ts`).
+3. Al aprobar un pago, `db.ts` recalcula automáticamente `next_payment_due` basado en `payment_due_day`.
+4. La UI de edición vive en `src/app/admin/components/configuracion-tab.tsx` y se accede desde la tab "Configuracion" del admin panel.
+5. La migración inicial está en `supabase/migrations/005_site_settings.sql`. La tabla está reflejada en `schema.sql`.
+
+---
+
+## Payment Reminders (cron de cuota)
+
+`checkUpcomingPaymentDues()` corre diariamente en `/api/cron` (9 AM UTC = 6 AM Argentina) y envía notificaciones in-app a los atletas activos con pago pendiente:
+
+| Tipo | Cuándo | Mensaje |
+|------|--------|---------|
+| `pre_due_7d` | 7 días antes del vencimiento | "Tu cuota mensual vence el {fecha}..." |
+| `pre_due_3d` | 3 días antes | "Recordatorio: tu cuota vence en 3 días..." |
+| `due_today`  | Día del vencimiento | "Hoy vence tu cuota. Subí tu comprobante..." |
+| `overdue_1d` | 1 día vencido | "Tu cuota está vencida. Regularizá tu pago..." |
+| `overdue_7d` | 7 días vencido | "Cuota vencida hace 7 días. Si no regularizás..." |
+
+**Idempotencia:** la tabla `payment_reminder_log` tiene `UNIQUE(athlete_id, reminder_type, sent_at::date)`. Si el cron corre más de una vez por día, no se duplican las notificaciones. Constraint `23505` (unique violation) → se ignora silenciosamente.
+
+**Mora:** si el atleta está vencido, se actualiza `mora_months = |daysLeft|` (cap a 99) y `payment_status = 'Vencido'`. Esto le da al admin visibilidad de cuántos meses debe.
+
+**Reset de `next_payment_due`:** al aprobar/condonar un pago, se setea `last_payment_date = now()` y `next_payment_due = computeNextPaymentDue(now, pricing.dueDay)`. Al activar un atleta (`updateAthleteTeamStatus → 'activo'`), se inicializa `next_payment_due` al próximo día de vencimiento.
+
+**Migración:** `supabase/migrations/004_payment_due.sql`. Reflejada en `schema.sql`.
+
+---
+
+## CSRF Protection
+
+La app usa 2 capas de defensa contra CSRF:
+
+### Capa 1: Origin/Referer validation (middleware)
+- `src/middleware.ts` valida que toda request con método no seguro (POST, PUT, PATCH, DELETE) venga del mismo origen (`NEXT_PUBLIC_APP_URL` o `VERCEL_URL`).
+- Si el `Origin` (o `Referer` como fallback) no está en la lista de orígenes permitidos, retorna 403.
+- Excluye del check: `/api/auth/*`, `/api/storage/*`, `/api/cron` (los uploads/downloads tienen sus propios auth checks; el cron usa `Authorization: Bearer`).
+
+### Capa 2: doble submit cookie (defensa en profundidad)
+- `src/lib/csrf.ts` exporta `getOrIssueCsrfToken()`, `assertCsrfToken()`, `assertCsrfFromRequest()`.
+- Cookie httpOnly `__Host-csrf-token` con 32 bytes random (base64url).
+- Para endpoints `/api/*` que muten, se puede aplicar `assertCsrfFromRequest(request)` que compara el header `X-CSRF-Token` contra la cookie.
+- Los server actions de Next 15 ya están protegidos por same-origin + action ID, por lo que la Capa 1 es suficiente para el grueso.
+
+### Headers de seguridad (`next.config.ts`)
+- `X-Frame-Options: DENY` (anti clickjacking)
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(self), microphone=(), geolocation=()`
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (solo en producción)
+
+### Auditoría de contraseñas
+- Better Auth hashea las contraseñas con scrypt por default. Nunca se exponen en queries (verificado: 0 matches de `password` en `src/`).
+- Al agregar nuevas pantallas que listen usuarios, **NO incluir el campo de password en la proyección**. Usar solo `ATHLETE_COLUMNS` (que ya lo excluye).
+
+---
+
+## Pagination (atletas)
+
+El tab "Atletas" del admin está paginado server-side para evitar que 200+ atletas rendericen al mismo tiempo.
+
+**Implementación:**
+- `db.ts` exporta `getPaginatedAthletesByTeamStatusAsync(status, { page, pageSize })` que usa `range(from, to)` + `count: 'exact'` de Supabase.
+- Default `pageSize = 20`, max `100`.
+- `AtletasTab` recibe `page`, `pageSize`, `total`, `onPageChange` y renderiza `<Pagination />`.
+- El sidebar del admin sigue mostrando el total real (via `getAllAthletes()` cargado en `loadData()`).
+
+**Componente UI:** `src/components/ui/pagination.tsx` — botones planos shadcn-style (sin cards, sin gradientes), con elipsis para listas grandes, accesible (`aria-label`, `aria-current`).
+
+**Para agregar paginación a otro tab:**
+1. Agregar helper `getPaginatedXxxAsync(opts)` en `db.ts` que use `.range(from, to)` + `.select(..., { count: 'exact' })`.
+2. El componente del tab debe recibir `page`, `pageSize`, `total`, `onPageChange` y renderizar `<Pagination />` al final.
+3. El state `page` debe estar en el padre (admin/page.tsx) para persistir entre re-renders.
+
+---
+
+## Design Restraint (cards/gradients)
+
+Reglas de diseño limpio (siguiendo el feedback "no abusar de cards ni degradados"):
+
+1. **Evitar `<Card>` envueltas cuando la info ya tiene su contenedor natural** (tabla, lista, modal).
+2. **No usar gradientes de fondo** (`bg-gradient-to-*`) salvo en hero/banner principal. Para separaciones usar `border-border` + `bg-muted/30`.
+3. **Una sombra por elemento** como máximo (`shadow-sm`). Nunca combinar `shadow-md` + `shadow-lg` + gradiente.
+4. **Espacio en blanco generoso**: `p-6` o `p-8` para cards importantes, `gap-4` a `gap-6` entre elementos.
+5. **Inputs y botones** sin envolturas decorativas — usar los primitives de `src/components/ui/` directamente.
+6. **Badges** para estado (`StatusBadge`, `PaymentBadge`) en lugar de cards chicas coloreadas.
+
+**Bueno (clean):** tabla con `<Pagination />` al pie, modales con `bg-card` sólido, secciones con título + descripción + acción al final.
+
+**Evitar:** grids de 4 cards con iconos grandes y sombras pesadas solo para mostrar 1 número; KPIs deberían ser texto + número en una sola línea si el espacio lo permite.

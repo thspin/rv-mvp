@@ -7,6 +7,8 @@ import {
   buildWhatsAppLink,
   getExperienceYears,
   cn,
+  computeNextPaymentDue,
+  formatCurrency,
 } from '@/lib/utils'
 import type { Athlete } from '@/lib/db-types'
 
@@ -339,5 +341,92 @@ describe('cn', () => {
   it('handles undefined and null', () => {
     const result = cn('base', undefined, null, 'extra')
     expect(result).toBe('base extra')
+  })
+})
+
+describe('computeNextPaymentDue', () => {
+  it('returns same-month due date when due day is in the future', () => {
+    const from = new Date(2024, 5, 10, 14, 30) // Jun 10
+    const result = computeNextPaymentDue(from, 15)
+    expect(result.getFullYear()).toBe(2024)
+    expect(result.getMonth()).toBe(5)
+    expect(result.getDate()).toBe(15)
+  })
+
+  it('rolls to next month when current day equals due day', () => {
+    const from = new Date(2024, 5, 15, 0, 0, 0, 0)
+    const result = computeNextPaymentDue(from, 15)
+    expect(result.getMonth()).toBe(6) // July
+    expect(result.getDate()).toBe(15)
+  })
+
+  it('rolls to next month when current day is past due day', () => {
+    const from = new Date(2024, 5, 20, 0, 0, 0, 0)
+    const result = computeNextPaymentDue(from, 15)
+    expect(result.getMonth()).toBe(6)
+    expect(result.getDate()).toBe(15)
+  })
+
+  it('clamps dueDay to 28 when value > 28', () => {
+    const from = new Date(2024, 5, 1, 0, 0, 0, 0)
+    const result = computeNextPaymentDue(from, 31)
+    expect(result.getDate()).toBe(28)
+  })
+
+  it('clamps dueDay to 1 when value < 1', () => {
+    const from = new Date(2024, 5, 1, 0, 0, 0, 0)
+    const result = computeNextPaymentDue(from, 0)
+    expect(result.getDate()).toBe(1)
+  })
+
+  it('handles December rollover to next year', () => {
+    const from = new Date(2024, 11, 20, 0, 0, 0, 0)
+    const result = computeNextPaymentDue(from, 15)
+    expect(result.getFullYear()).toBe(2025)
+    expect(result.getMonth()).toBe(0) // January
+    expect(result.getDate()).toBe(15)
+  })
+
+  it('returns 00:00:00 time component', () => {
+    const from = new Date(2024, 5, 1, 23, 59, 59, 999)
+    const result = computeNextPaymentDue(from, 15)
+    expect(result.getHours()).toBe(0)
+    expect(result.getMinutes()).toBe(0)
+    expect(result.getSeconds()).toBe(0)
+  })
+
+  it('does not mutate input date', () => {
+    const from = new Date(2024, 5, 10, 12)
+    computeNextPaymentDue(from, 15)
+    expect(from.getMonth()).toBe(5)
+    expect(from.getDate()).toBe(10)
+    expect(from.getHours()).toBe(12)
+  })
+})
+
+describe('formatCurrency', () => {
+  it('formats ARS by default', () => {
+    const result = formatCurrency(17000)
+    expect(result).toMatch(/17\.000|17000/)
+  })
+
+  it('respects provided currency code', () => {
+    const result = formatCurrency(100, 'USD')
+    expect(result).toContain('US$')
+  })
+
+  it('falls back gracefully on invalid currency', () => {
+    const result = formatCurrency(50000, 'INVALID')
+    expect(result).toContain('50.000')
+  })
+
+  it('handles zero', () => {
+    const result = formatCurrency(0)
+    expect(result).toBeTruthy()
+  })
+
+  it('uppercases currency code', () => {
+    const result = formatCurrency(100, 'ars')
+    expect(result).toMatch(/AR\$|ARS|\$/)
   })
 })

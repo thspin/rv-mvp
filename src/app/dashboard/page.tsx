@@ -12,6 +12,7 @@ import {
   getTeamMembers,
 } from '@/lib/db';
 import { parseTrainingDays, parseInstructions } from '@/lib/db-types';
+import { getPricingConfig } from '@/lib/settings';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/toast';
 import Navbar from '@/components/Navbar';
@@ -78,6 +79,7 @@ export default function AthleteDashboard() {
   const [teamMembers, setTeamMembers] = useState<Athlete[]>([]);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaveFeedback, setLeaveFeedback] = useState('');
+  const [pricingAmount, setPricingAmount] = useState<number>(17000);
 
   const loadData = async () => {
     if (!user) return;
@@ -85,10 +87,14 @@ export default function AthleteDashboard() {
       router.push('/equipos');
       return;
     }
-    const members = await getTeamMembers(user.team_id);
+    const [members, teamData, pricing] = await Promise.all([
+      getTeamMembers(user.team_id),
+      getTeamAsync(user.team_id),
+      getPricingConfig().catch(() => ({ amount: 17000, currency: 'ARS' as const, dueDay: 1 })),
+    ]);
     setTeamMembers(members);
-    const teamData = await getTeamAsync(user.team_id);
     setTeam(teamData);
+    setPricingAmount(pricing.amount);
     setDataLoading(false);
   };
 
@@ -272,7 +278,7 @@ export default function AthleteDashboard() {
     }
   })();
 
-  const athletePlan = plans.find((p: any) => p.id === user.subscription_plan_id) || plans[0] || { name: 'Individual', price: 17000 };
+  const athletePlan = plans.find((p: any) => p.id === user.subscription_plan_id) || plans[0] || { name: 'Individual', price: pricingAmount };
   const planPrice = athletePlan.price;
   const planName = athletePlan.name;
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { checkUpcomingExpirations } from '@/lib/db'
+import { checkUpcomingExpirations, checkUpcomingPaymentDues } from '@/lib/db'
 import { createBackup, cleanOldBackups } from '@/lib/backup'
 
 export async function GET(request: Request) {
@@ -9,7 +9,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const notifications = await checkUpcomingExpirations()
+    const [notifications, paymentReminders] = await Promise.all([
+      checkUpcomingExpirations(),
+      checkUpcomingPaymentDues(),
+    ])
 
     let backup: Awaited<ReturnType<typeof createBackup>> | null = null
     let limpieza: Awaited<ReturnType<typeof cleanOldBackups>> | null = null
@@ -27,6 +30,7 @@ export async function GET(request: Request) {
       success: true,
       timestamp: new Date().toISOString(),
       notifications,
+      paymentReminders,
       backup: backup ?? { error: backupError },
       limpieza: limpieza ?? { eliminados: 0 },
     })

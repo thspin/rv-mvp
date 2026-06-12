@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Athlete } from '@/lib/db';
+import { getPricingConfig } from '@/lib/settings';
 import { X, Check, XCircle, Eye, ShieldAlert, CreditCard } from 'lucide-react';
 
 interface PagosTabProps {
@@ -15,12 +16,23 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
   const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; name: string } | null>(null);
   const [rejectingAthlete, setRejectingAthlete] = useState<Athlete | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  
+
   // State for Option A: Approval Modal
   const [approvingAthlete, setApprovingAthlete] = useState<Athlete | null>(null);
   const [method, setMethod] = useState<'Transferencia' | 'Efectivo' | 'Condonar'>('Transferencia');
   const [amount, setAmount] = useState<number>(17000);
+  const [currency, setCurrency] = useState<'ARS' | 'USD' | 'EUR' | 'BRL'>('ARS');
   const [visibleCount, setVisibleCount] = useState<number>(6);
+
+  useEffect(() => {
+    let cancelled = false
+    getPricingConfig().then((cfg) => {
+      if (cancelled) return
+      setAmount(cfg.amount)
+      setCurrency(cfg.currency)
+    }).catch(() => { /* keep defaults */ })
+    return () => { cancelled = true }
+  }, [])
 
   const handleOpenReceipt = (athlete: Athlete) => {
     if (!athlete.payment_receipt_url) return;
@@ -40,7 +52,10 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
     // Default to Transferencia if they uploaded a receipt, otherwise Efectivo
     const defaultMethod = athlete.payment_status === 'Pendiente_Verificacion' ? 'Transferencia' : 'Efectivo';
     setMethod(defaultMethod);
-    setAmount(17000);
+    getPricingConfig().then((cfg) => {
+      setAmount(cfg.amount)
+      setCurrency(cfg.currency)
+    }).catch(() => { /* keep existing amount */ })
   };
 
   const handleConfirmApprove = () => {
@@ -223,11 +238,11 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
                     key={opt.value}
                     type="button"
                     onClick={() => {
-                      setMethod(opt.value as any);
+                      setMethod(opt.value as 'Transferencia' | 'Efectivo' | 'Condonar');
                       if (opt.value === 'Condonar') {
                         setAmount(0);
                       } else if (amount === 0) {
-                        setAmount(17000);
+                        getPricingConfig().then((cfg) => setAmount(cfg.amount)).catch(() => {})
                       }
                     }}
                     className={`px-3 py-2.5 rounded-xl border text-xs font-extrabold transition-all text-center cursor-pointer ${
@@ -245,14 +260,14 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
             {/* Importe a Abonar */}
             {method !== 'Condonar' ? (
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Monto (ARS)</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Monto ({currency})</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{currency}</span>
                   <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary font-bold"
+                    className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary font-bold"
                   />
                 </div>
               </div>

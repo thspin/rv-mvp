@@ -92,7 +92,24 @@ export interface Athlete {
   avatar_url?: string;
   mora_months?: number;
   subscription_plan_id?: string;
+  next_payment_due?: string | null;
+  last_payment_date?: string | null;
 }
+
+export interface PricingConfig {
+  amount: number;
+  currency: 'ARS' | 'USD' | 'EUR' | 'BRL';
+  dueDay: number;
+}
+
+export const PRICING_DEFAULTS: PricingConfig = {
+  amount: 17000,
+  currency: 'ARS',
+  dueDay: 1,
+};
+
+export const SUPPORTED_CURRENCIES = ['ARS', 'USD', 'EUR', 'BRL'] as const;
+export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 export interface Payment {
   id: string;
@@ -153,5 +170,7 @@ export function fromDbAthlete(row: Record<string, unknown>): Athlete {
     avatar_url: row.avatar_url as string | undefined,
     mora_months: (row.mora_months as number) || 0,
     subscription_plan_id: row.subscription_plan_id as string | undefined,
+    next_payment_due: (row.next_payment_due as string | null | undefined) ?? null,
+    last_payment_date: (row.last_payment_date as string | null | undefined) ?? null,
   };
 }

@@ -1,9 +1,14 @@
 'use client';
 
 import { Athlete } from '@/lib/db';
+import { Pagination } from '@/components/ui/pagination';
 
 interface AtletasTabProps {
   activeMembers: Athlete[];
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
   onExpel: (athlete: Athlete) => void;
 }
 
@@ -38,7 +43,7 @@ function AptoBadge({ status }: { status: string | null | undefined }) {
   );
 }
 
-export function AtletasTab({ activeMembers, onExpel }: AtletasTabProps) {
+export function AtletasTab({ activeMembers, page, pageSize, total, onPageChange, onExpel }: AtletasTabProps) {
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -83,6 +88,14 @@ export function AtletasTab({ activeMembers, onExpel }: AtletasTabProps) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="border-t border-border px-4">
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={onPageChange}
+        />
       </div>
     </div>
   );
