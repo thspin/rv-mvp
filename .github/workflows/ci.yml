@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main, production-hardening]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:unit
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: ${{ github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:integration
+        env:
+          CI: 'true'
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, unit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build (with dummy env vars)
+        run: npm run build
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_APP_URL: 'http://localhost:3000'
+          BETTER_AUTH_SECRET: 'ci-dummy-better-auth-secret-32-chars-padding-xxxx'
+          BETTER_AUTH_URL: 'http://localhost:3000'
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable'
+          SUPABASE_JWT_SECRET: 'ci-dummy-supabase-jwt-secret-32-chars-padding-xxxxx'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://ci-dummy.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'ci-dummy-anon-key'
+          SUPABASE_SERVICE_ROLE_KEY: 'ci-dummy-service-role-key'
+          GOOGLE_CLIENT_ID: 'ci-dummy.apps.googleusercontent.com'
+          GOOGLE_CLIENT_SECRET: 'ci-dummy-google-secret'
+          CRON_SECRET: 'ci-dummy-cron-secret'
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:e2e:install
+      - run: npm run test:e2e
+        env:
+          CI: 'true'
+          NEXT_PUBLIC_APP_URL: 'http://localhost:3000'
