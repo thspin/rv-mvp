@@ -74,6 +74,13 @@ export function isProfileComplete(user: Athlete | null): boolean {
   return hasRequiredFields && hasRequiredDocs && user.onboarding_complete;
 }
 
+export const MORA_MAX_MONTHS = 99
+
+export function computeMoraMonths(daysOverdue: number): number {
+  if (!Number.isFinite(daysOverdue) || daysOverdue <= 0) return 0
+  return Math.min(MORA_MAX_MONTHS, Math.floor(daysOverdue / 30))
+}
+
 export function parseDateLocal(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);

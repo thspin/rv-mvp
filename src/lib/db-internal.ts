@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service'
+import { computeMoraMonths } from '@/lib/utils'
 
 export async function createNotificationInternal(
   userId: string,
@@ -185,7 +186,7 @@ export async function checkUpcomingPaymentDues(): Promise<{
     }
 
     if (daysLeft < 0) {
-      const mora = Math.min(99, Math.floor(Math.abs(daysLeft) / 30))
+      const mora = computeMoraMonths(Math.abs(daysLeft))
       const currentMora = a.mora_months ?? 0
       try {
         if (mora > currentMora) {

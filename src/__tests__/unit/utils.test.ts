@@ -9,6 +9,8 @@ import {
   cn,
   computeNextPaymentDue,
   formatCurrency,
+  computeMoraMonths,
+  MORA_MAX_MONTHS,
 } from '@/lib/utils'
 import type { Athlete } from '@/lib/db-types'
 
@@ -428,5 +430,34 @@ describe('formatCurrency', () => {
   it('uppercases currency code', () => {
     const result = formatCurrency(100, 'ars')
     expect(result).toMatch(/AR\$|ARS|\$/)
+  })
+})
+
+describe('computeMoraMonths', () => {
+  it('returns 0 for non-positive or non-finite days overdue', () => {
+    expect(computeMoraMonths(0)).toBe(0)
+    expect(computeMoraMonths(-5)).toBe(0)
+    expect(computeMoraMonths(NaN)).toBe(0)
+    expect(computeMoraMonths(Infinity)).toBe(0)
+    expect(computeMoraMonths(-Infinity)).toBe(0)
+  })
+
+  it('returns 0 for less than 30 days overdue', () => {
+    expect(computeMoraMonths(1)).toBe(0)
+    expect(computeMoraMonths(15)).toBe(0)
+    expect(computeMoraMonths(29)).toBe(0)
+  })
+
+  it('floors to whole months for typical debts (regression for the days-vs-months bug)', () => {
+    expect(computeMoraMonths(30)).toBe(1)
+    expect(computeMoraMonths(60)).toBe(2)
+    expect(computeMoraMonths(90)).toBe(3)
+    expect(computeMoraMonths(365)).toBe(12)
+  })
+
+  it('caps at MORA_MAX_MONTHS for very long debts', () => {
+    expect(computeMoraMonths(30 * 200)).toBe(MORA_MAX_MONTHS)
+    expect(computeMoraMonths(30 * 1000)).toBe(MORA_MAX_MONTHS)
+    expect(MORA_MAX_MONTHS).toBe(99)
   })
 })
