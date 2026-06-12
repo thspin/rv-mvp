@@ -351,7 +351,7 @@ export default function AthleteDashboard() {
                         )}
                       </div>
                       <p className="text-base text-slate-600 font-semibold flex items-center justify-center md:justify-start gap-2">
-                        <span>Entrenador: <strong className="text-[#990000]">{team.coach}</strong></span>
+                        <span>Entrenador: <span className="text-[#990000] font-normal">{team.coach}</span></span>
                         <a
                           href={whatsappLink}
                           target="_blank"
@@ -359,7 +359,7 @@ export default function AthleteDashboard() {
                           className="inline-flex items-center text-emerald-500 hover:text-emerald-600 transition-all duration-150 p-0.5 hover:scale-110 active:scale-95 flex-shrink-0"
                           title={`Enviar mensaje a ${team.coach}`}
                         >
-                          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
                             <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.978L2 22l5.233-1.372a9.948 9.948 0 0 0 4.779 1.222h.004c5.505 0 9.989-4.478 9.99-9.985A9.97 9.97 0 0 0 12.012 2zm5.835 14.129c-.256.719-1.285 1.408-1.768 1.47-.482.062-1.077.087-3.136-.763-2.636-1.087-4.32-3.791-4.452-3.966-.131-.174-1.071-1.428-1.071-2.723 0-1.294.678-1.928.919-2.19.242-.262.528-.328.703-.328.176 0 .351.001.503.008.157.007.368-.06.575.441.207.502.71 1.733.772 1.859.062.126.103.272.019.439-.083.167-.124.272-.248.419-.124.146-.26.326-.372.438-.124.125-.254.261-.11.512.145.251.644 1.062 1.379 1.718.948.845 1.745 1.107 1.993 1.232.247.126.392.105.538-.063.145-.167.621-.722.787-.968.166-.246.331-.207.558-.123.228.084 1.448.682 1.696.807.248.125.414.188.476.293.061.104.061.603-.195 1.322z" />
                           </svg>
                         </a>
