@@ -345,8 +345,19 @@ export default function AthleteDashboard() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-slate-500 font-medium">
-                        Entrenador: <strong className="text-[#990000]">{team.coach}</strong>
+                      <p className="text-sm text-slate-500 font-medium flex items-center justify-center md:justify-start gap-1.5">
+                        <span>Entrenador: <strong className="text-[#990000]">{team.coach}</strong></span>
+                        <a
+                          href={whatsappLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-emerald-500 hover:text-emerald-600 transition-all duration-150 p-0.5 hover:scale-110 active:scale-95 flex-shrink-0"
+                          title={`Enviar mensaje a ${team.coach}`}
+                        >
+                          <svg className="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24">
+                            <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.978L2 22l5.233-1.372a9.948 9.948 0 0 0 4.779 1.222h.004c5.505 0 9.989-4.478 9.99-9.985A9.97 9.97 0 0 0 12.012 2zm5.835 14.129c-.256.719-1.285 1.408-1.768 1.47-.482.062-1.077.087-3.136-.763-2.636-1.087-4.32-3.791-4.452-3.966-.131-.174-1.071-1.428-1.071-2.723 0-1.294.678-1.928.919-2.19.242-.262.528-.328.703-.328.176 0 .351.001.503.008.157.007.368-.06.575.441.207.502.71 1.733.772 1.859.062.126.103.272.019.439-.083.167-.124.272-.248.419-.124.146-.26.326-.372.438-.124.125-.254.261-.11.512.145.251.644 1.062 1.379 1.718.948.845 1.745 1.107 1.993 1.232.247.126.392.105.538-.063.145-.167.621-.722.787-.968.166-.246.331-.207.558-.123.228.084 1.448.682 1.696.807.248.125.414.188.476.293.061.104.061.603-.195 1.322z" />
+                          </svg>
+                        </a>
                       </p>
                     </div>
                   </div>
@@ -874,46 +885,6 @@ export default function AthleteDashboard() {
 
                   {/* COLUMNA DERECHA (1/3) */}
                   <div className="space-y-6">
-
-                    {/* CONTACTO ENTRENADOR */}
-                    <SectionCard spaceY="space-y-0" padding="p-0">
-                      <div className="bg-gradient-to-r from-[#990000] to-[#fe0000] px-6 py-4 rounded-t-[32px]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <MessageCircle className="w-4.5 h-4.5 text-white" />
-                          </div>
-                          <h3 className={`${archivoFont.className} text-sm font-black text-white uppercase tracking-tight leading-none`}>
-                            Tu Entrenador
-                          </h3>
-                        </div>
-                      </div>
-                      <div className="px-6 py-5 space-y-4">
-                        {/* Coach card */}
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white font-black text-base uppercase shadow-sm">
-                            {coachName[0]}
-                          </div>
-                          <div className="text-left">
-                            <p className="text-sm font-bold text-slate-900 leading-none">{coachName}</p>
-                            <p className="text-[10px] text-slate-500 font-semibold mt-1 uppercase tracking-wider">Coordinador</p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                          ¿Tenés dudas o necesitas justificar una inasistencia?
-                        </p>
-                        <a
-                          href={whatsappLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl text-center flex items-center justify-center gap-2 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer uppercase tracking-wider"
-                        >
-                          <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                            <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.978L2 22l5.233-1.372a9.948 9.948 0 0 0 4.779 1.222h.004c5.505 0 9.989-4.478 9.99-9.985A9.97 9.97 0 0 0 12.012 2zm5.835 14.129c-.256.719-1.285 1.408-1.768 1.47-.482.062-1.077.087-3.136-.763-2.636-1.087-4.32-3.791-4.452-3.966-.131-.174-1.071-1.428-1.071-2.723 0-1.294.678-1.928.919-2.19.242-.262.528-.328.703-.328.176 0 .351.001.503.008.157.007.368-.06.575.441.207.502.71 1.733.772 1.859.062.126.103.272.019.439-.083.167-.124.272-.248.419-.124.146-.26.326-.372.438-.124.125-.254.261-.11.512.145.251.644 1.062 1.379 1.718.948.845 1.745 1.107 1.993 1.232.247.126.392.105.538-.063.145-.167.621-.722.787-.968.166-.246.331-.207.558-.123.228.084 1.448.682 1.696.807.248.125.414.188.476.293.061.104.061.603-.195 1.322z" />
-                          </svg>
-                          Enviar WhatsApp
-                        </a>
-                      </div>
-                    </SectionCard>
 
                     {/* CUMPLEAÑOS DE LA SEMANA */}
                     <SectionCard spaceY="space-y-0" padding="p-0">
