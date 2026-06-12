@@ -20,6 +20,22 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 
 ---
 
+## CLI Tools Disponibles
+
+Estas herramientas están instaladas y disponibles via `npx`:
+
+*   **Vercel CLI** (`npx vercel`): Para gestión de deployments y variables de entorno.
+    *   `npx vercel env add <NAME> <environment>` — Agregar variable de entorno
+    *   `npx vercel env ls` — Listar variables de entorno
+    *   `npx vercel --prod --yes` — Deploy directo a producción
+*   **Supabase CLI** (`npx supabase`): Para gestión de base de datos y migraciones.
+    *   Requiere autenticación previa con `npx supabase login`
+*   **PostgreSQL** (`pg` module): El paquete `pg` está disponible en `node_modules` para ejecutar queries SQL directamente contra la base de datos.
+    *   Útil para ejecutar migraciones SQL cuando no hay acceso a Supabase CLI autenticado.
+    *   Crear un archivo temporal `.js` en el directorio del proyecto, ejecutarlo con `node`, y luego eliminarlo.
+
+---
+
 ## Project Directory Structure & Boundaries
 
 *   **`src/app/`**: Contains page views and API routes.
