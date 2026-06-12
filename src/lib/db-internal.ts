@@ -235,6 +235,14 @@ async function trySendPaymentReminder(
     return false
   }
 
-  await createNotificationInternal(userId, title, message)
+  // Send the notification, but don't fail the cron if the notification
+  // insert fails. The reminder log row is the source of truth for
+  // idempotency; a failed notification just means the user won't see
+  // this one (and we'll retry the whole batch tomorrow anyway).
+  try {
+    await createNotificationInternal(userId, title, message)
+  } catch (notifErr) {
+    console.error('[cron] createNotification failed after reminder log inserted:', notifErr)
+  }
   return true
 }
