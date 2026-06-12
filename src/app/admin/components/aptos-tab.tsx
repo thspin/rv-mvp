@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Athlete } from '@/lib/db';
+import { Pagination } from '@/components/ui/pagination';
 import { X, Eye, AlertTriangle, Clock, ShieldAlert } from 'lucide-react';
 
 interface AptosTabProps {
@@ -12,6 +13,8 @@ interface AptosTabProps {
   onReject: (athlete: Athlete) => void;
 }
 
+const PAGE_SIZE = 20
+
 function getDaysLeft(vencimiento: string | undefined): number | null {
   if (!vencimiento) return null
   return Math.ceil((new Date(vencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -20,6 +23,7 @@ function getDaysLeft(vencimiento: string | undefined): number | null {
 export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove, onReject }: AptosTabProps) {
   const [selectedCert, setSelectedCert] = useState<{ url: string; name: string } | null>(null);
   const [activeSection, setActiveSection] = useState<'pendientes' | 'porvencer' | 'vencidos'>('pendientes');
+  const [page, setPage] = useState(1)
 
   const handleOpenCert = (athlete: Athlete) => {
     if (!athlete.apto_medico_url) return;
@@ -33,6 +37,17 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
     { id: 'vencidos' as const, label: 'Vencidos', count: expiredAptos.length, icon: ShieldAlert, color: 'text-red-600' },
   ];
 
+  const currentList = activeSection === 'pendientes' ? pendingAptos : activeSection === 'porvencer' ? upcomingAptos : expiredAptos
+  const totalPages = Math.max(1, Math.ceil(currentList.length / PAGE_SIZE))
+  const paginated = useMemo(
+    () => currentList.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [currentList, page],
+  )
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1)
+  }, [currentList.length, page, totalPages])
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b border-border">
@@ -41,7 +56,7 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveSection(tab.id)}
+              onClick={() => { setActiveSection(tab.id); setPage(1) }}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
                 activeSection === tab.id
                   ? 'border-primary text-foreground'
@@ -66,22 +81,22 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
 
       {activeSection === 'pendientes' && (
         <div className="space-y-3">
-          {pendingAptos.length === 0 ? (
+          {paginated.length === 0 ? (
             <div className="bg-card rounded-xl p-8 text-center border border-border">
               <p className="text-muted-foreground text-sm font-medium">No hay aptos medicos pendientes de revision</p>
             </div>
           ) : (
-            pendingAptos.map(athlete => (
-              <div key={athlete.id} className="bg-card rounded-xl p-6 border border-border flex flex-col justify-between space-y-4 shadow-sm">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+            paginated.map(athlete => (
+              <div key={athlete.id} className="bg-card rounded-xl p-5 border border-border flex flex-col justify-between space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div>
-                    <h3 className="font-semibold text-foreground">{athlete.name || "Sin nombre"}</h3>
+                    <h3 className="font-semibold text-foreground text-sm">{athlete.name || "Sin nombre"}</h3>
                   </div>
                   <div className="flex gap-2 items-center">
                     {athlete.apto_medico_url && (
                       <button
                         onClick={() => handleOpenCert(athlete)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-muted/65 hover:bg-muted text-foreground text-xs font-semibold rounded-xl border border-border cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
                       >
                         <Eye className="w-4 h-4" />
                         Ver Apto Medico
@@ -89,13 +104,13 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
                     )}
                     <button
                       onClick={() => onApprove(athlete)}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md hover:shadow-emerald-500/15 transition-all duration-200 cursor-pointer"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
                     >
                       Aprobar
                     </button>
                     <button
                       onClick={() => onReject(athlete)}
-                      className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md hover:shadow-rose-500/15 transition-all duration-200 cursor-pointer"
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
                     >
                       Rechazar
                     </button>
@@ -109,27 +124,23 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
 
       {activeSection === 'porvencer' && (
         <div className="space-y-3">
-          {upcomingAptos.length === 0 ? (
+          {paginated.length === 0 ? (
             <div className="bg-card rounded-xl p-8 text-center border border-border">
               <p className="text-muted-foreground text-sm font-medium">No hay aptos medicos proximos a vencer</p>
             </div>
           ) : (
-            upcomingAptos.map(athlete => {
+            paginated.map(athlete => {
               const daysLeft = getDaysLeft(athlete.apto_medico_vencimiento)
               const isCritical = daysLeft !== null && daysLeft <= 7
               return (
-                <div key={athlete.id} className={`bg-card rounded-xl p-6 border shadow-sm ${
-                  isCritical ? 'border-red-200 bg-red-50/30' : 'border-amber-200 bg-amber-50/30'
+                <div key={athlete.id} className={`bg-card rounded-xl p-4 border ${
+                  isCritical ? 'border-red-300' : 'border-amber-300'
                 }`}>
-                  <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        isCritical ? 'bg-red-100' : 'bg-amber-100'
-                      }`}>
-                        <AlertTriangle className={`w-5 h-5 ${isCritical ? 'text-red-600' : 'text-amber-600'}`} />
-                      </div>
+                      <AlertTriangle className={`w-4 h-4 ${isCritical ? 'text-red-600' : 'text-amber-600'}`} />
                       <div>
-                        <h3 className="font-semibold text-foreground">{athlete.name || "Sin nombre"}</h3>
+                        <h3 className="font-semibold text-foreground text-sm">{athlete.name || "Sin nombre"}</h3>
                         <p className={`text-xs font-medium ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>
                           Vence en {daysLeft} dias ({athlete.apto_medico_vencimiento ? new Date(athlete.apto_medico_vencimiento).toLocaleDateString('es-AR') : ''})
                         </p>
@@ -138,7 +149,7 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
                     {athlete.apto_medico_url && (
                       <button
                         onClick={() => handleOpenCert(athlete)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-muted text-foreground text-xs font-semibold rounded-xl border border-border cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
                       >
                         <Eye className="w-4 h-4" />
                         Ver certificado
@@ -154,20 +165,18 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
 
       {activeSection === 'vencidos' && (
         <div className="space-y-3">
-          {expiredAptos.length === 0 ? (
+          {paginated.length === 0 ? (
             <div className="bg-card rounded-xl p-8 text-center border border-border">
               <p className="text-muted-foreground text-sm font-medium">No hay aptos medicos vencidos</p>
             </div>
           ) : (
-            expiredAptos.map(athlete => (
-              <div key={athlete.id} className="bg-card rounded-xl p-6 border border-red-200 bg-red-50/30 shadow-sm">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+            paginated.map(athlete => (
+              <div key={athlete.id} className="bg-card rounded-xl p-4 border border-red-300">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                      <ShieldAlert className="w-5 h-5 text-red-600" />
-                    </div>
+                    <ShieldAlert className="w-4 h-4 text-red-600" />
                     <div>
-                      <h3 className="font-semibold text-foreground">{athlete.name || "Sin nombre"}</h3>
+                      <h3 className="font-semibold text-foreground text-sm">{athlete.name || "Sin nombre"}</h3>
                       <p className="text-xs font-medium text-red-600">
                         Vencio el {athlete.apto_medico_vencimiento ? new Date(athlete.apto_medico_vencimiento).toLocaleDateString('es-AR') : ''}
                       </p>
@@ -176,7 +185,7 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
                   {athlete.apto_medico_url && (
                     <button
                       onClick={() => handleOpenCert(athlete)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-muted text-foreground text-xs font-semibold rounded-xl border border-border cursor-pointer transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-foreground text-xs font-semibold rounded-lg border border-border cursor-pointer transition-colors"
                     >
                       <Eye className="w-4 h-4" />
                       Ver certificado anterior
@@ -186,6 +195,17 @@ export function AptosTab({ pendingAptos, upcomingAptos, expiredAptos, onApprove,
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {currentList.length > PAGE_SIZE && (
+        <div className="flex justify-center pt-2">
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={currentList.length}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

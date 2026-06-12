@@ -307,3 +307,183 @@ describe('processCertificateAsync', () => {
     expect(updateCall![0].apto_medico_motivo_rechazo).toBe('Imagen borrosa')
   })
 })
+
+describe('checkUpcomingPaymentDues - idempotency', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('envia recordatorio para atleta con next_payment_due en T-3', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    // Single shared chain. The function:
+    //  1) calls .from('athletes').select(...).eq().neq().not()  -> chain.select resolves to athlete array
+    //  2) for each athlete, .from('payment_reminder_log').insert({...}) -> chain.insert resolves ok
+    // Because mockFrom returns the same chain for all .from() calls, we wire
+    // both .select() and .insert() to do the right thing.
+    const chain = setupChain()
+    const t3 = new Date()
+    t3.setHours(12, 0, 0, 0)
+    t3.setDate(t3.getDate() + 3)
+    const athletes = [
+      { id: 'a1', user_id: 'u1', name: 'A1', email: 'a1@b.com', next_payment_due: t3.toISOString(), mora_months: 0 },
+    ]
+    chain.select.mockImplementation(() => ({
+      eq: () => ({
+        neq: () => ({
+          not: () => Promise.resolve({ data: athletes, error: null }),
+        }),
+      }),
+    }))
+    chain.insert.mockResolvedValue({ data: null, error: null })
+
+    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const result = await checkUpcomingPaymentDues()
+    expect(result.preDue3).toBe(1)
+  })
+
+  it('NO duplica recordatorio si el UNIQUE INDEX choca con 23505', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    const chain = setupChain()
+    const t3 = new Date()
+    t3.setHours(12, 0, 0, 0)
+    t3.setDate(t3.getDate() + 3)
+    const athletes = [
+      { id: 'a1', user_id: 'u1', name: 'A1', email: 'a1@b.com', next_payment_due: t3.toISOString(), mora_months: 0 },
+    ]
+    chain.select.mockImplementation(() => ({
+      eq: () => ({
+        neq: () => ({
+          not: () => Promise.resolve({ data: athletes, error: null }),
+        }),
+      }),
+    }))
+    // First insert (athletes loop iterates per reminder type) succeeds.
+    // If the cron runs again same day, UNIQUE INDEX choca con 23505.
+    let callCount = 0
+    chain.insert.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return Promise.resolve({ data: null, error: null })
+      return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } })
+    })
+
+    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const r1 = await checkUpcomingPaymentDues()
+    // Reset callCount to simulate second cron run same day
+    const initialCalls = callCount
+    const r2 = await checkUpcomingPaymentDues()
+
+    // First run: 1 notification
+    expect(r1.preDue3).toBe(1)
+    // Second run: 0 notifications (23505 caught, no notification created)
+    expect(r2.preDue3).toBe(0)
+    expect(callCount).toBeGreaterThan(initialCalls) // we did try to insert
+  })
+
+  it('atletas con next_payment_due en T+0 incrementan dueToday', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    const chain = setupChain()
+    const today = new Date()
+    today.setHours(12, 0, 0, 0)
+    const athletes = [
+      { id: 'a1', user_id: 'u1', name: 'A1', email: 'a1@b.com', next_payment_due: today.toISOString(), mora_months: 0 },
+    ]
+    chain.select.mockImplementation(() => ({
+      eq: () => ({
+        neq: () => ({
+          not: () => Promise.resolve({ data: athletes, error: null }),
+        }),
+      }),
+    }))
+    chain.insert.mockResolvedValue({ data: null, error: null })
+
+    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const result = await checkUpcomingPaymentDues()
+    expect(result.dueToday).toBe(1)
+  })
+
+  it('retorna counts en 0 cuando no hay candidatos', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    const chain = setupChain()
+    chain.select.mockImplementation(() => ({
+      eq: () => ({
+        neq: () => ({
+          not: () => Promise.resolve({ data: [], error: null }),
+        }),
+      }),
+    }))
+
+    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const result = await checkUpcomingPaymentDues()
+    expect(result).toEqual({ preDue7: 0, preDue3: 0, dueToday: 0, overdue1: 0, overdue7: 0 })
+  })
+
+  it('salta atletas con daysLeft > 7 (no recordatorio todavia)', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    const chain = setupChain()
+    const future = new Date()
+    future.setDate(future.getDate() + 15)
+    const athletes = [
+      { id: 'a1', user_id: 'u1', name: 'A1', email: 'a1@b.com', next_payment_due: future.toISOString(), mora_months: 0 },
+    ]
+    chain.select.mockImplementation(() => ({
+      eq: () => ({
+        neq: () => ({
+          not: () => Promise.resolve({ data: athletes, error: null }),
+        }),
+      }),
+    }))
+    chain.insert.mockResolvedValue({ data: null, error: null })
+
+    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const result = await checkUpcomingPaymentDues()
+    expect(result.preDue7).toBe(0)
+    expect(result.preDue3).toBe(0)
+    expect(result.dueToday).toBe(0)
+  })
+
+  it('mora: actualiza mora_months para atletas con next_payment_due en pasado', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    const chain = setupChain()
+    const past = new Date()
+    past.setDate(past.getDate() - 5)
+    const athletes = [
+      { id: 'a1', user_id: 'u1', name: 'A1', email: 'a1@b.com', next_payment_due: past.toISOString(), mora_months: 0 },
+    ]
+    chain.select.mockImplementation(() => ({
+      eq: () => ({
+        neq: () => ({
+          not: () => Promise.resolve({ data: athletes, error: null }),
+        }),
+      }),
+    }))
+    chain.insert.mockResolvedValue({ data: null, error: null })
+
+    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    await checkUpcomingPaymentDues()
+
+    // update should have been called for the mora update on the past-due athlete
+    const updateCalls = mockUpdate.mock.calls
+    const moraCall = updateCalls.find((call: any[]) => call[0] && 'mora_months' in call[0])
+    expect(moraCall).toBeTruthy()
+    expect(moraCall![0].mora_months).toBe(5)
+    expect(moraCall![0].payment_status).toBe('Vencido')
+  })
+})

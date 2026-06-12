@@ -19,7 +19,7 @@ function clampDueDay(value: unknown): number {
 
 function clampAmount(value: unknown): number {
   const n = Number(value)
-  if (!Number.isFinite(n) || n < 0) return PRICING_DEFAULTS.amount
+  if (!Number.isFinite(n) || n < 0) return 0
   return Math.round(n * 100) / 100
 }
 

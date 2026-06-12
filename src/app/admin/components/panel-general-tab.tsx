@@ -18,32 +18,10 @@ interface PanelGeneralTabProps {
   activityLogs: ActivityLog[]
 }
 
-interface FeatureCardProps {
+interface FeatureItem {
   icon: React.ElementType
   title: string
   description: string
-}
-
-function FeatureCard({ icon: Icon, title, description }: FeatureCardProps) {
-  return (
-    <div className="relative bg-card/50 border border-border rounded-xl p-4 hover:border-primary/30 hover:bg-card transition-all duration-200 group">
-      <div className="flex items-start gap-3">
-        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-          <Icon className="w-5 h-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-sm font-semibold text-foreground truncate">{title}</h4>
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wide rounded-full">
-              <Sparkles className="w-3 h-3" />
-              Nuevo
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function formatTimeAgo(dateString: string): string {
@@ -74,90 +52,62 @@ function getCategoryColor(category: string): string {
 export function PanelGeneralTab({ team, athletes, activityLogs }: PanelGeneralTabProps) {
   const activeMembers = athletes.filter(a => a.team_status === "activo")
   const pendingRequests = athletes.filter(a => a.team_status === "pendiente")
+  const paidCount = athletes.filter(a => a.payment_status === "Pagado").length
+  const vigentesCount = athletes.filter(a => a.apto_medico_status === "vigente").length
   const recentLogs = activityLogs.slice(0, 5)
 
-  const featuresNew: FeatureCardProps[] = [
-    {
-      icon: UserPlus,
-      title: "Gestion de Solicitudes",
-      description: "Acepta o rechaza solicitudes de atletas para unirse al equipo",
-    },
-    {
-      icon: CreditCard,
-      title: "Validacion de Pagos",
-      description: "Revisa comprobantes y registra pagos de suscripciones",
-    },
-    {
-      icon: Stethoscope,
-      title: "Aptos Medicos",
-      description: "Gestiona certificados medicos con fechas de vencimiento",
-    },
-    {
-      icon: Bell,
-      title: "Sistema de Notificaciones",
-      description: "Notifica a atletas sobre pagos, aptos y actualizaciones",
-    },
-    {
-      icon: History,
-      title: "Historial de Actividad",
-      description: "Registro completo de todas las acciones realizadas",
-    },
-    {
-      icon: UserCircle,
-      title: "Perfiles de Atletas",
-      description: "Gestion de datos personales y documentacion",
-    },
-    {
-      icon: Building2,
-      title: "Directorio de Equipos",
-      description: "Los atletas pueden explorar y solicitar unirse",
-    },
+  const features: FeatureItem[] = [
+    { icon: UserPlus,    title: "Gestion de Solicitudes",  description: "Acepta o rechaza solicitudes de atletas para unirse al equipo" },
+    { icon: CreditCard,  title: "Validacion de Pagos",     description: "Revisa comprobantes y registra pagos de suscripciones" },
+    { icon: Stethoscope, title: "Aptos Medicos",           description: "Gestiona certificados medicos con fechas de vencimiento" },
+    { icon: Bell,        title: "Notificaciones",          description: "Notifica a atletas sobre pagos, aptos y actualizaciones" },
+    { icon: History,     title: "Historial de Actividad",  description: "Registro completo de todas las acciones realizadas" },
+    { icon: UserCircle,  title: "Perfiles de Atletas",     description: "Gestion de datos personales y documentacion" },
+    { icon: Building2,   title: "Directorio de Equipos",   description: "Los atletas pueden explorar y solicitar unirse" },
   ]
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl p-6 border border-border">
-        <div className="flex items-center gap-2 mb-4">
+      {/* Bienvenida + KPIs en una sola card aplanada */}
+      <section>
+        <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-5 h-5 text-primary" />
           <h2 className="text-xl font-semibold text-foreground">Bienvenido a tu Panel de Control</h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-6">
+        <p className="text-sm text-muted-foreground mb-5">
           Gestiona tu equipo de forma eficiente con todas las herramientas que necesitas en un solo lugar.
         </p>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-primary">{activeMembers.length}</p>
-            <p className="text-xs text-muted-foreground">Atletas activos</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-border border border-border rounded-xl bg-card">
+          <div className="p-4">
+            <p className="text-2xl font-bold text-foreground">{activeMembers.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Atletas activos</p>
           </div>
-          <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{pendingRequests.length}</p>
-            <p className="text-xs text-muted-foreground">Solicitudes</p>
+          <div className="p-4">
+            <p className="text-2xl font-bold text-foreground">{pendingRequests.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Solicitudes</p>
           </div>
-          <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {athletes.filter(a => a.payment_status === "Pagado").length}
-            </p>
-            <p className="text-xs text-muted-foreground">Pagos al dia</p>
+          <div className="p-4">
+            <p className="text-2xl font-bold text-foreground">{paidCount}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Pagos al dia</p>
           </div>
-          <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-              {athletes.filter(a => a.apto_medico_status === "vigente").length}
-            </p>
-            <p className="text-xs text-muted-foreground">Aptos vigentes</p>
+          <div className="p-4">
+            <p className="text-2xl font-bold text-foreground">{vigentesCount}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Aptos vigentes</p>
           </div>
         </div>
-      </div>
+      </section>
 
+      {/* Actividad Reciente */}
       {recentLogs.length > 0 && (
-        <div className="bg-card rounded-xl p-6 border border-border">
+        <section>
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <History className="w-4 h-4 text-muted-foreground" />
             Actividad Reciente
           </h3>
-          <div className="space-y-2">
+          <div className="border border-border rounded-xl bg-card divide-y divide-border">
             {recentLogs.map((log) => (
-              <div key={log.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+              <div key={log.id} className="flex items-center gap-3 px-4 py-3">
                 <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${getCategoryColor(log.category)}`}>
                   {log.category}
                 </span>
@@ -168,23 +118,33 @@ export function PanelGeneralTab({ team, athletes, activityLogs }: PanelGeneralTa
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="bg-card rounded-xl p-6 border border-border">
+      {/* Funcionalidades - lista plana, sin cards anidadas */}
+      <section>
         <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
           Funcionalidades Disponibles
         </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs text-muted-foreground mb-3">
           Todas las herramientas que necesitas para gestionar tu equipo
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {featuresNew.map((feature, idx) => (
-            <FeatureCard key={idx} {...feature} />
-          ))}
+        <div className="border border-border rounded-xl bg-card divide-y divide-border">
+          {features.map((f) => {
+            const Icon = f.icon
+            return (
+              <div key={f.title} className="flex items-start gap-3 px-4 py-3">
+                <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground leading-tight">{f.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </div>
+      </section>
     </div>
   )
 }

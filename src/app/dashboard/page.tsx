@@ -283,7 +283,7 @@ export default function AthleteDashboard() {
   const planName = athletePlan.name;
 
   return (
-    <div className="min-h-screen bg-slate-50 bg-[radial-gradient(120%_60%_at_50%_0%,rgba(74,222,128,0.08)_0%,rgba(153,0,0,0.05)_40%,rgba(255,255,255,0)_100%)] text-slate-900 font-sans antialiased pb-8">
+    <div className="min-h-screen bg-background text-foreground font-sans antialiased pb-8">
       <HeaderAlert user={user} />
       <Navbar />
 

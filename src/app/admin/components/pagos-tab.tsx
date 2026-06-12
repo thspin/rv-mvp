@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Athlete } from '@/lib/db';
 import { getPricingConfig } from '@/lib/settings';
+import { Pagination } from '@/components/ui/pagination';
 import { X, Check, XCircle, Eye, ShieldAlert, CreditCard } from 'lucide-react';
 
 interface PagosTabProps {
@@ -11,6 +12,8 @@ interface PagosTabProps {
   onReject: (athlete: Athlete, reason: string) => void;
   onCondone: (athlete: Athlete) => void;
 }
+
+const PAGE_SIZE = 12
 
 export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: PagosTabProps) {
   const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; name: string } | null>(null);
@@ -22,7 +25,13 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
   const [method, setMethod] = useState<'Transferencia' | 'Efectivo' | 'Condonar'>('Transferencia');
   const [amount, setAmount] = useState<number>(17000);
   const [currency, setCurrency] = useState<'ARS' | 'USD' | 'EUR' | 'BRL'>('ARS');
-  const [visibleCount, setVisibleCount] = useState<number>(6);
+  const [page, setPage] = useState(1)
+
+  const totalPages = Math.max(1, Math.ceil(pendingPagos.length / PAGE_SIZE))
+  const paginatedPagos = useMemo(
+    () => pendingPagos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [pendingPagos, page],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -33,6 +42,11 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
     }).catch(() => { /* keep defaults */ })
     return () => { cancelled = true }
   }, [])
+
+  // Reset to page 1 when pendingPagos shrinks below current page (e.g. after approve/reject/condone)
+  useEffect(() => {
+    if (page > totalPages) setPage(1)
+  }, [pendingPagos.length, page, totalPages])
 
   const handleOpenReceipt = (athlete: Athlete) => {
     if (!athlete.payment_receipt_url) return;
@@ -82,7 +96,7 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pendingPagos.slice(0, visibleCount).map((athlete) => {
+            {paginatedPagos.map((athlete) => {
               const hasReceipt = !!athlete.payment_receipt_url;
               const isVerifying = athlete.payment_status === 'Pendiente_Verificacion';
 
@@ -167,14 +181,14 @@ export function PagosTab({ pendingPagos, onApprove, onReject, onCondone }: Pagos
               );
             })}
           </div>
-          {pendingPagos.length > visibleCount && (
+          {pendingPagos.length > PAGE_SIZE && (
             <div className="flex justify-center pt-2">
-              <button
-                onClick={() => setVisibleCount((prev) => prev + 6)}
-                className="px-5 py-2.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-xs font-bold transition-all duration-200 hover:scale-[1.02] hover:shadow-sm active:scale-[0.98] cursor-pointer shadow-sm"
-              >
-                Ver más atletas
-              </button>
+              <Pagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={pendingPagos.length}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </div>
