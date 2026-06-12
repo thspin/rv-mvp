@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server'
-import { checkUpcomingExpirations, checkUpcomingPaymentDues } from '@/lib/db'
+import { checkUpcomingExpirations, checkUpcomingPaymentDues } from '@/lib/db-internal'
 import { createBackup, cleanOldBackups } from '@/lib/backup'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const expectedSecret = process.env.CRON_SECRET
+
+  if (!expectedSecret) {
+    return NextResponse.json(
+      { error: 'CRON_SECRET is not configured' },
+      { status: 401 },
+    )
+  }
+
+  if (authHeader !== `Bearer ${expectedSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

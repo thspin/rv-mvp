@@ -42,4 +42,24 @@ next-env.d.ts
 
 # supabase
 supabase/.temp/
+supabase/.temp_old/
 .env*.local
+
+# dev tooling caches
+.cline/
+.claude/
+.cursor/
+.windsurf/
+.aider*
+.continue/
+
+# agent / IDE metadata
+skills-lock.json
+README_MCP.md
+AGENTS.local.md
+agents.local.md
+
+# one-off scripts that hardcode secrets
+update-vercel-env.js
+secrets/
+*.local.json

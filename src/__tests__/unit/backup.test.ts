@@ -62,9 +62,24 @@ describe('backup', () => {
       expect(result.nombreArchivo).toMatch(/^backup-\d{4}-\d{2}-\d{2}\.json\.gz$/)
       expect(result.tablas).toHaveProperty('user')
       expect(result.tablas).toHaveProperty('athletes')
-      expect(mockQuery).toHaveBeenCalledTimes(8)
+      // TABLAS is now 5: user, teams, athletes, payments, notifications
+      // (session, account, verification are excluded — see SECURITY.md)
+      expect(mockQuery).toHaveBeenCalledTimes(5)
       expect(mockUpload).toHaveBeenCalledTimes(1)
       expect(mockPoolEnd).toHaveBeenCalled()
+    })
+
+    it('excludes session / account / verification from the dump (no token exfil via backup)', async () => {
+      mockQuery.mockResolvedValue({ rows: [{ data: [] }] })
+      mockUpload.mockResolvedValue({ error: null })
+
+      const { createBackup } = await import('@/lib/backup')
+      await createBackup()
+
+      const sqls = mockQuery.mock.calls.map((c) => String(c[0] ?? ''))
+      expect(sqls.some((s) => s.includes('"session"'))).toBe(false)
+      expect(sqls.some((s) => s.includes('"account"'))).toBe(false)
+      expect(sqls.some((s) => s.includes('"verification"'))).toBe(false)
     })
 
     it('cuenta filas correctamente', async () => {
