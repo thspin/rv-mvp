@@ -1,5 +1,6 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
 import ErrorFallback from '@/components/ErrorFallback'
 
 export default function GlobalError({
@@ -9,6 +10,10 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  Sentry.captureException(error, {
+    tags: { source: 'global-error' },
+  })
+
   return (
     <html lang="es">
       <body className="min-h-full bg-background text-foreground font-sans antialiased">

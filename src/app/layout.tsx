@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
+import SentryUserProvider from "@/components/SentryUserProvider";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -26,9 +27,11 @@ export default function RootLayout({
   return (
     <html lang="es" className="h-full scroll-smooth">
       <body className={`${inter.variable} min-h-full flex flex-col font-sans bg-background text-foreground antialiased pb-24`}>
-        <ToastProvider>
-          {children}
-        </ToastProvider>
+        <SentryUserProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </SentryUserProvider>
       </body>
     </html>
   );
