@@ -7,12 +7,16 @@ Welcome, AI Assistant! This document serves as the absolute source of truth for 
 ## Tech Stack & Key Libraries
 
 *   **Framework**: Next.js 16 (App Router).
-*   **Styling**: Tailwind CSS v4 & shadcn/ui.
+*   **Styling**: Tailwind CSS v4 & shadcn/ui (base-nova).
 *   **Auth**: Better Auth (Google OAuth) — configuración en [auth.ts](file:///src/lib/auth.ts) y [auth-client.ts](file:///src/lib/auth-client.ts).
 *   **Database**: Supabase PostgreSQL (RLS habilitado con políticas por usuario, JWT custom firmado con Supabase JWT Secret).
-*   **Storage**: Supabase Storage (uploads vía `/api/storage/upload` con validaciones).
-*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando `createAuthenticatedClient(userId)` para operaciones con RLS y `createServiceClient()` solo para operaciones del sistema (notificaciones, logs). Tipos en [db-types.ts](file:///src/lib/db-types.ts).
+*   **Storage**: Supabase Storage (uploads vía `/api/storage/upload` con validaciones, bucket privado `backups` para dumps diarios).
+*   **Database Interface**: Server-only layer en [db.ts](file:///src/lib/db.ts) usando `createAuthenticatedClient(userId)` para operaciones con RLS y `createServiceClient()` solo para operaciones del sistema (notificaciones, logs, backups). Tipos en [db-types.ts](file:///src/lib/db-types.ts).
 *   **Server Actions**: [actions.ts](file:///src/lib/actions.ts) para operaciones que requieren sesión de Better Auth.
+*   **Rate Limiting**: Upstash Redis + @upstash/ratelimit (sliding window). Configurado en [rate-limit.ts](file:///src/lib/rate-limit.ts).
+*   **Error Monitoring**: Sentry (browser, server, edge) via @sentry/nextjs. Helpers en [sentry-utils.ts](file:///src/lib/sentry-utils.ts). SDK config en `sentry.{client,server,edge}.config.ts`.
+*   **Error Boundaries**: `error.tsx` y `global-error.tsx` por cada ruta (Next.js App Router). Componente reutilizable en [ErrorFallback.tsx](file:///src/components/ErrorFallback.tsx).
+*   **Daily Backups**: [backup.ts](file:///src/lib/backup.ts) — dump gzip a Supabase Storage bucket `backups`, rotación 7 días, fusionado con el cron existente (`/api/cron`).
 *   **Icons**: Lucide React.
 *   **Utility**: `cn()` (clsx + tailwind-merge) for class composition.
 *   **Images**: `next/image` para optimización automática (AVIF/WebP).
@@ -45,16 +49,29 @@ Estas herramientas están instaladas y disponibles via `npx`:
     *   `perfil/page.tsx`: Personal details, emergency contact edits, onboarding.
     *   `api/auth/[...all]/route.ts`: Better Auth catch-all handler.
     *   `api/storage/[bucket]/route.ts`: Secure proxy for downloading storage files via service role credentials.
+    *   `api/storage/upload/route.ts`: Upload endpoint con validación MIME/size/extension.
+    *   `api/cron/route.ts`: Daily cron (9 AM UTC) — notificaciones de vencimientos + backup automático.
+    *   `api/debug/route.ts`: Debug endpoint (bloqueado en producción vía `ENABLE_DEBUG_ENDPOINT`).
+    *   `error.tsx`, `global-error.tsx`: Error boundaries de Next.js por ruta.
 *   **`src/components/`**: Reusable component layouts. Put layout items (like navigation) here.
+    *   `ErrorFallback.tsx`: UI reutilizable para error boundaries (botón reintentar + detalles técnicos en dev).
+    *   `SentryUserProvider.tsx`: Client component que setea el user context de Sentry automáticamente.
 *   **`src/lib/`**:
     *   `auth.ts`: Better Auth server instance (PostgreSQL + Google OAuth + nextCookies plugin).
     *   `auth-client.ts`: Better Auth client instance (`createAuthClient` from `better-auth/react`).
     *   `actions.ts`: Server actions that require Better Auth session (e.g., `getCurrentUserAction`).
     *   `db.ts`: All database transactions (Teams, Athletes, Payments). **Always modify database queries here, not inside client pages.**
+    *   `errors.ts`: Clases de error personalizadas (`RateLimitError` con `code: 'RATE_LIMITED'`).
+    *   `rate-limit.ts`: Rate limiting via Upstash — `rateLimitMiddleware()` para Edge y `rateLimitAction()` para server actions. Fallback graceful si Upstash no está configurado.
+    *   `backup.ts`: Daily database backup — `createBackup()` (paralelo + gzip) y `cleanOldBackups()` (rotación 7 días). Se ejecuta desde `/api/cron`.
+    *   `sentry-utils.ts`: Helpers de Sentry — `setUserContext()` y `addBreadcrumb()`.
     *   `supabase/client.ts`: Browser anon client (solo para Storage uploads).
-    *   `supabase/service.ts`: Server-side service role client (solo para operaciones del sistema: createNotification, logActivityAsync).
+    *   `supabase/service.ts`: Server-side service role client (solo para operaciones del sistema: createNotification, logActivityAsync, backup).
     *   `supabase/authenticated.ts`: Server-side authenticated client que firma JWT custom con SUPABASE_JWT_SECRET para que RLS use `auth.uid()` del Better Auth user.
-*   **`proxy.ts`**: Next.js 16 proxy (reemplaza middleware.ts) — protección de rutas con `getSessionCookie`.
+*   **`middleware.ts`**: Next.js middleware (Edge runtime) — rate limiting por IP+path para `/api/*` + protección de sesión con `getSessionCookie`. Excluye `/api/auth` del check de sesión pero sí aplica rate limit.
+*   **`next.config.ts`**: Envuelto con `withSentryConfig()` (tunnelRoute, sourcemaps deshabilitados, automaticVercelMonitors).
+*   **`instrumentation.ts`**: Hook de Next.js 15+ que inicializa Sentry server/edge según `NEXT_RUNTIME`.
+*   **`sentry.{client,server,edge}.config.ts`**: Config de Sentry por runtime. Solo se inicializa si `NEXT_PUBLIC_SENTRY_DSN` está presente.
 *   **`schema.sql`**: Database structure including Better Auth tables (user, session, account, verification) and application tables. If you modify database fields or add tables, update this file too.
 
 ---
@@ -79,10 +96,26 @@ db.ts
 ```
 
 ### Variables de entorno requeridas
+
+**Core (Supabase + Auth):**
 - `SUPABASE_JWT_SECRET` — JWT Secret de Supabase (Dashboard > Settings > API > JWT Secret)
 - `NEXT_PUBLIC_SUPABASE_URL` — URL del proyecto Supabase
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Anon key pública
-- `SUPABASE_SERVICE_ROLE_KEY` — Service role key (solo para createNotification y logActivityAsync)
+- `SUPABASE_SERVICE_ROLE_KEY` — Service role key (solo para createNotification, logActivityAsync y backup)
+- `DATABASE_URL` — Connection string de Postgres (usado por `pg` para backups directos)
+- `BETTER_AUTH_SECRET` — Secret para Better Auth (generar con `openssl rand -base64 32`)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — OAuth de Google
+- `CRON_SECRET` — Secret para proteger `/api/cron` (generar con `openssl rand -hex 32`)
+
+**Rate Limiting (Upstash — opcional, fallback graceful si falta):**
+- `UPSTASH_REDIS_REST_URL` — URL del Redis de Upstash
+- `UPSTASH_REDIS_REST_TOKEN` — Token de Upstash
+
+**Error Monitoring (Sentry — opcional, fallback graceful si falta):**
+- `NEXT_PUBLIC_SENTRY_DSN` — DSN público de Sentry (browser + server)
+- `SENTRY_ORG` — Slug de organización (opcional, para source maps)
+- `SENTRY_PROJECT` — Slug del proyecto (opcional, para source maps)
+- `SENTRY_AUTH_TOKEN` — Auth token (opcional, para subir source maps en build)
 
 ### Políticas RLS
 - **teams**: Lectura para authenticated, solo admin puede modificar
@@ -259,19 +292,94 @@ Skills are located in `.agents/skills/`. Reference them when working on relevant
 ### Accessibility
 
 | Skill | Source | When to use |
-|-------|--------|-------------|
-| `accessibility` | addyosmani | WCAG 2.2 audit, POUR principles, keyboard nav |
+|-------|--------|------------|
+| `accessibility` | addyosmani | WCAG 2.2 audit, POUR rules, keyboard nav |
 | `fixing-accessibility` | ibelick | Targeted ARIA, focus, contrast, and form error fixes |
 
 ### Database & Backend
 
 | Skill | Source | When to use |
-|-------|--------|-------------|
+|-------|--------|------------|
 | `supabase-postgres-best-practices` | supabase | Query performance, RLS security, schema design |
 
 ### Quality & SEO
 
 | Skill | Source | When to use |
-|-------|--------|-------------|
+|-------|--------|------------|
 | `seo` | addyosmani | Crawlability, meta tags, structured data, sitemaps |
 | `typescript-advanced-types` | wshobson | Generics, conditional types, mapped types, type-safe patterns |
+
+---
+
+## Rate Limiting
+
+El proyecto tiene rate limiting en 2 capas:
+
+### Capa 1: Middleware (Edge)
+- `/api/auth/*` — 20 req/min por IP
+- `/api/storage/upload` — 5 req/min por IP
+- `/api/storage/*` (downloads) — 30 req/min por IP
+- Otras `/api/*` — 60 req/min por IP
+- `rateLimitMiddleware()` retorna `NextResponse` con status 429 + headers `Retry-After` y `X-RateLimit-*`
+
+### Capa 2: Server Actions
+
+| Función | Límite | Ventana | Prefix Upstash |
+|---------|--------|---------|----------------|
+| `requestJoinTeamAction` / `leaveTeamAction` | 5 | 1 min | `rl:action:joinTeam`, `rl:action:leaveTeam` |
+| `uploadPaymentReceiptAsync` | 10 | 5 min | `rl:action:uploadReceipt` |
+| `uploadMedicalCertificateAsync` | 10 | 5 min | `rl:action:uploadMedicalCert` |
+| `completeOnboardingAsync` | 20 | 5 min | `rl:action:completeOnboarding` |
+| `getAthletesAsync` | 60 | 1 min | `rl:action:getAthletes` |
+| `getPaymentsAsync` | 30 | 1 min | `rl:action:getPayments` |
+
+Cada server action tiene su propio prefix en Upstash (`rl:action:${actionName}`) para buckets independientes. Si Upstash no está configurado, todas las requests pasan (warning en consola).
+
+**Importante**: NO agregar rate limiting a funciones internas (ej. `updateAthleteProfileAsync`) porque son llamadas por admin operations y afectaría el flujo admin.
+
+---
+
+## Error Monitoring (Sentry)
+
+- **Browser**: errores del cliente + user context automático via `SentryUserProvider`
+- **Server**: errores de server actions / API routes (capturados automáticamente por el SDK)
+- **Edge**: errores del middleware (rate limiter, session check)
+
+Cada `error.tsx` llama `Sentry.captureException(error, { tags: { source: 'ruta' } })` con tag de origen (`root`, `dashboard`, `equipos`, `perfil`, `admin`, `global-error`).
+
+**Tags disponibles en Sentry dashboard:**
+- `source`: ruta donde ocurrió el error
+- `function`: nombre de la función (ej. `createBackup`)
+
+---
+
+## Daily Backups
+
+- **Schedule**: 9 AM UTC (6 AM Argentina) via cron existente en `/api/cron`
+- **Storage**: bucket `backups` (privado) en Supabase Storage
+- **Formato**: `backup-YYYY-MM-DD.json.gz` (gzip reduce ~70%)
+- **Tablas**: 8 tablas (user, account, session, verification, teams, athletes, payments, notifications). `activity_logs` está excluido por tamaño.
+- **Retención**: 7 días (`cleanOldBackups()` rota automáticamente)
+- **Sin segundo cron**: Vercel Free solo permite 2 crons, se fusionó con el de notificaciones de vencimientos.
+
+Si el backup falla, Sentry captura la excepción con tag `source: 'backup-cron'`.
+
+**Restauración** (manual, no hay script automático):
+1. Descargar `.json.gz` del bucket
+2. Descomprimir con `gunzip`
+3. Limpiar tablas destino
+4. Insertar filas respetando orden de FKs (ver `TABLAS` en `src/lib/backup.ts`)
+
+---
+
+## Supabase Storage Buckets
+
+| Bucket | Acceso | Propósito |
+|--------|--------|-----------|
+| `receipts` | Privado | Comprobantes de pago subidos por atletas |
+| `medical-certs` | Privado | Aptos médicos subidos por atletas |
+| `avatars` | Privado | Avatares de usuario |
+| `documents` | Privado | Documentos de identidad |
+| `backups` | Privado | Dumps diarios automáticos de la DB (gzip) |
+
+**Importante**: Todos los buckets son privados. El acceso desde el cliente siempre pasa por `/api/storage/[bucket]` (downloads con ownership check) o `/api/storage/upload` (uploads con validación). Nunca exponer URLs públicas de Supabase Storage.
