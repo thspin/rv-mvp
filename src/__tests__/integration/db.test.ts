@@ -339,7 +339,7 @@ describe('checkUpcomingPaymentDues - idempotency', () => {
     }))
     chain.insert.mockResolvedValue({ data: null, error: null })
 
-    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const { checkUpcomingPaymentDues } = await import('@/lib/db-internal')
     const result = await checkUpcomingPaymentDues()
     expect(result.preDue3).toBe(1)
   })
@@ -372,7 +372,7 @@ describe('checkUpcomingPaymentDues - idempotency', () => {
       return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } })
     })
 
-    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const { checkUpcomingPaymentDues } = await import('@/lib/db-internal')
     const r1 = await checkUpcomingPaymentDues()
     // Reset callCount to simulate second cron run same day
     const initialCalls = callCount
@@ -405,7 +405,7 @@ describe('checkUpcomingPaymentDues - idempotency', () => {
     }))
     chain.insert.mockResolvedValue({ data: null, error: null })
 
-    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const { checkUpcomingPaymentDues } = await import('@/lib/db-internal')
     const result = await checkUpcomingPaymentDues()
     expect(result.dueToday).toBe(1)
   })
@@ -424,7 +424,7 @@ describe('checkUpcomingPaymentDues - idempotency', () => {
       }),
     }))
 
-    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const { checkUpcomingPaymentDues } = await import('@/lib/db-internal')
     const result = await checkUpcomingPaymentDues()
     expect(result).toEqual({ preDue7: 0, preDue3: 0, dueToday: 0, overdue1: 0, overdue7: 0 })
   })
@@ -449,21 +449,22 @@ describe('checkUpcomingPaymentDues - idempotency', () => {
     }))
     chain.insert.mockResolvedValue({ data: null, error: null })
 
-    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const { checkUpcomingPaymentDues } = await import('@/lib/db-internal')
     const result = await checkUpcomingPaymentDues()
     expect(result.preDue7).toBe(0)
     expect(result.preDue3).toBe(0)
     expect(result.dueToday).toBe(0)
   })
 
-  it('mora: actualiza mora_months para atletas con next_payment_due en pasado', async () => {
+  it('mora: actualiza mora_months en meses (no dias) para atletas con next_payment_due en pasado', async () => {
     vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
       user: { id: 'admin-id', email: 'test@test.com' },
     })
 
     const chain = setupChain()
+    // 60 days in the past = 2 months of mora
     const past = new Date()
-    past.setDate(past.getDate() - 5)
+    past.setDate(past.getDate() - 60)
     const athletes = [
       { id: 'a1', user_id: 'u1', name: 'A1', email: 'a1@b.com', next_payment_due: past.toISOString(), mora_months: 0 },
     ]
@@ -476,14 +477,14 @@ describe('checkUpcomingPaymentDues - idempotency', () => {
     }))
     chain.insert.mockResolvedValue({ data: null, error: null })
 
-    const { checkUpcomingPaymentDues } = await import('@/lib/db')
+    const { checkUpcomingPaymentDues } = await import('@/lib/db-internal')
     await checkUpcomingPaymentDues()
 
     // update should have been called for the mora update on the past-due athlete
     const updateCalls = mockUpdate.mock.calls
     const moraCall = updateCalls.find((call: any[]) => call[0] && 'mora_months' in call[0])
     expect(moraCall).toBeTruthy()
-    expect(moraCall![0].mora_months).toBe(5)
+    expect(moraCall![0].mora_months).toBe(2)
     expect(moraCall![0].payment_status).toBe('Vencido')
   })
 })

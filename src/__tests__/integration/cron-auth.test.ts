@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/db', () => ({
+vi.mock('@/lib/db-internal', () => ({
   checkUpcomingExpirations: vi.fn().mockResolvedValue({ total: 0 }),
   checkUpcomingPaymentDues: vi.fn().mockResolvedValue({
     preDue7: 0,
@@ -10,6 +10,8 @@ vi.mock('@/lib/db', () => ({
     overdue1: 0,
     overdue7: 0,
   }),
+  createNotificationInternal: vi.fn(),
+  logActivityInternal: vi.fn(),
 }))
 
 vi.mock('@/lib/backup', () => ({

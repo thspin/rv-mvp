@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { checkUpcomingExpirations, checkUpcomingPaymentDues } from '@/lib/db'
+import { checkUpcomingExpirations, checkUpcomingPaymentDues } from '@/lib/db-internal'
 import { createBackup, cleanOldBackups } from '@/lib/backup'
 
 export async function GET(request: Request) {
