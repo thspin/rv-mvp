@@ -91,6 +91,8 @@ export default function EquiposPage() {
       if (result.success) {
         setUser(result.data);
         await loadData();
+      } else if (result.code === 'RATE_LIMITED') {
+        setActionError('Estas haciendo demasiadas solicitudes. Espera un momento y volve a intentarlo.');
       } else {
         setActionError(`No se pudo enviar la solicitud (${result.code}): ${result.error}`);
       }
@@ -110,6 +112,8 @@ export default function EquiposPage() {
       if (result.success) {
         setUser(result.data);
         await loadData();
+      } else if (result.code === 'RATE_LIMITED') {
+        setActionError('Estas haciendo demasiadas solicitudes. Espera un momento y volve a intentarlo.');
       } else {
         setActionError(`No se pudo cancelar la solicitud (${result.code}): ${result.error}`);
       }

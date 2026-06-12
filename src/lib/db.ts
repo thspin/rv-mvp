@@ -6,6 +6,7 @@ import { addMonthsWithClamp } from '@/lib/utils'
 import { getCurrentUserAction } from '@/lib/actions'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { rateLimitAction } from '@/lib/rate-limit'
 import type { Team, Athlete, Payment, ActivityLog } from '@/lib/db-types'
 import { fromDbAthlete } from '@/lib/db-types'
 export type { Team, Athlete, Payment, ActivityLog, TrainingShift, ShiftInstructions } from '@/lib/db-types'
@@ -213,6 +214,8 @@ export async function getTeamsAsync(): Promise<Team[]> {
 export async function getAthletesAsync(): Promise<Athlete[]> {
   try {
     const session = await requireAdmin()
+    const rl = await rateLimitAction(session.user.id, 'getAthletes', 60, '1 m')
+    if (!rl.success) throw new Error(rl.error)
     const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('athletes')
@@ -299,6 +302,9 @@ export async function updateProfileAsync(email: string, updates: Partial<Athlete
 }
 
 export async function completeOnboardingAsync(email: string, updates: Partial<Athlete>): Promise<Athlete | null> {
+  const session = await requireSession()
+  const rl = await rateLimitAction(session.user.id, 'completeOnboarding', 20, '5 m')
+  if (!rl.success) throw new Error(rl.error)
   return updateAthleteProfileAsync(email, {
     ...updates,
     onboarding_complete: true
@@ -345,6 +351,9 @@ export async function leaveTeamAndReturnAsync(email: string): Promise<Athlete | 
 }
 
 export async function uploadPaymentReceiptAsync(email: string, receiptName: string): Promise<void> {
+  const session = await requireSession()
+  const rl = await rateLimitAction(session.user.id, 'uploadReceipt', 10, '5 m')
+  if (!rl.success) throw new Error(rl.error)
   await updateAthleteProfileAsync(email, {
     payment_status: 'Pendiente_Verificacion',
     payment_receipt_url: receiptName,
@@ -353,6 +362,9 @@ export async function uploadPaymentReceiptAsync(email: string, receiptName: stri
 }
 
 export async function uploadMedicalCertificateAsync(email: string, certName: string): Promise<void> {
+  const session = await requireSession()
+  const rl = await rateLimitAction(session.user.id, 'uploadMedicalCert', 10, '5 m')
+  if (!rl.success) throw new Error(rl.error)
   await updateAthleteProfileAsync(email, {
     apto_medico_status: 'pendiente_verificacion',
     apto_medico_url: certName,
@@ -571,6 +583,8 @@ export async function expelAthleteAsync(email: string): Promise<void> {
 export async function getPaymentsAsync(): Promise<Payment[]> {
   try {
     const session = await requireAdmin()
+    const rl = await rateLimitAction(session.user.id, 'getPayments', 30, '1 m')
+    if (!rl.success) throw new Error(rl.error)
     const supabase = createAuthenticatedClient(session.user.id)
     const { data, error } = await supabase
       .from('payments')

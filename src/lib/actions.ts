@@ -5,10 +5,11 @@ import { headers } from 'next/headers'
 import { createAuthenticatedClient } from '@/lib/supabase/authenticated'
 import type { Athlete } from '@/lib/db-types'
 import { fromDbAthlete } from '@/lib/db-types'
+import { rateLimitAction } from '@/lib/rate-limit'
 
 type ActionResult =
   | { success: true; data: Athlete }
-  | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'CREATE_ERROR' | 'UNKNOWN' }
+  | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'CREATE_ERROR' | 'UNKNOWN' | 'RATE_LIMITED' }
 
 export async function getCurrentUserAction(): Promise<Athlete> {
   const result = await getCurrentUserActionDetailed()
@@ -112,7 +113,7 @@ export async function getCurrentUserActionDetailed(): Promise<ActionResult> {
 
 type TeamActionResult =
   | { success: true; data: Athlete }
-  | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'UNKNOWN' }
+  | { success: false; error: string; code: 'NO_SESSION' | 'DB_ERROR' | 'UNKNOWN' | 'RATE_LIMITED' }
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -127,6 +128,11 @@ export async function requestJoinTeamAction(teamId: string): Promise<TeamActionR
     const { session, error } = await requireSession()
     if (error || !session) {
       return { success: false, error, code: 'NO_SESSION' }
+    }
+
+    const rl = await rateLimitAction(session.user.id, 'joinTeam', 5, '1 m')
+    if (!rl.success) {
+      return { success: false, error: rl.error || 'Rate limit exceeded', code: 'RATE_LIMITED' }
     }
 
     const supabase = createAuthenticatedClient(session.user.id)
@@ -151,6 +157,11 @@ export async function leaveTeamAction(): Promise<TeamActionResult> {
     const { session, error } = await requireSession()
     if (error || !session) {
       return { success: false, error, code: 'NO_SESSION' }
+    }
+
+    const rl = await rateLimitAction(session.user.id, 'leaveTeam', 5, '1 m')
+    if (!rl.success) {
+      return { success: false, error: rl.error || 'Rate limit exceeded', code: 'RATE_LIMITED' }
     }
 
     const supabase = createAuthenticatedClient(session.user.id)

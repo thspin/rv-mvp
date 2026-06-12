@@ -127,6 +127,10 @@ export default function AthleteDashboard() {
         body: formData,
       });
 
+      if (response.status === 429) {
+        throw new Error('Demasiados intentos de subida. Espera un momento y volve a intentarlo.');
+      }
+
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Upload failed');
 
@@ -140,7 +144,7 @@ export default function AthleteDashboard() {
       loadData();
     } catch (error) {
       console.error('Error uploading receipt:', error);
-      setUploadError('Error al subir el comprobante. Intenta nuevamente.');
+      setUploadError(error instanceof Error ? error.message : 'Error al subir el comprobante. Intenta nuevamente.');
     } finally {
       setUploadingReceipt(false);
     }
@@ -164,6 +168,10 @@ export default function AthleteDashboard() {
         body: formData,
       });
 
+      if (response.status === 429) {
+        throw new Error('Demasiados intentos de subida. Espera un momento y volve a intentarlo.');
+      }
+
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Upload failed');
 
@@ -177,7 +185,7 @@ export default function AthleteDashboard() {
       loadData();
     } catch (error) {
       console.error('Error uploading certificate:', error);
-      setCertError('Error al subir el certificado. Intenta nuevamente.');
+      setCertError(error instanceof Error ? error.message : 'Error al subir el certificado. Intenta nuevamente.');
     } finally {
       setUploadingCert(false);
     }
