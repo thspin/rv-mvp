@@ -462,12 +462,6 @@ export async function uploadMedicalCertificateAsync(email: string, certName: str
   }
 }
 
-function safeEmailForFilename(email: string | null | undefined): string {
-  return (email || 'unknown').replace(/[@.]/g, '_')
-}
-  }
-}
-
 // =========== Admin Operations ===========
 
 export async function updateAthleteTeamStatus(
