@@ -13,6 +13,8 @@ export interface Team {
   special_instructions?: string;
   google_maps_url?: string;
   subscription_plans?: string;
+  bank_cbu?: string;
+  bank_alias?: string;
 }
 
 export type MutationResult =
@@ -23,9 +25,6 @@ export const ok = (): MutationResult => ({ success: true });
 
 export function fail(error: string, code?: 'DB_ERROR' | 'UNKNOWN' | 'DUPLICATE' | 'NOT_FOUND'): MutationResult {
   return code ? { success: false, error, code } : { success: false, error }
-}
-  bank_cbu?: string;
-  bank_alias?: string;
 }
 
 export interface TrainingShift {
