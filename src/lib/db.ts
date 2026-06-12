@@ -2,7 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { createAuthenticatedClient } from '@/lib/supabase/authenticated'
-import { addMonthsWithClamp, computeNextPaymentDue } from '@/lib/utils'
+import { addMonthsWithClamp, computeNextPaymentDue, assertFilenameOwnership } from '@/lib/utils'
 import { getCurrentUserAction } from '@/lib/actions'
 import { getPricingConfig } from '@/lib/settings'
 import { auth } from '@/lib/auth'
@@ -465,33 +465,6 @@ export async function uploadMedicalCertificateAsync(email: string, certName: str
 function safeEmailForFilename(email: string | null | undefined): string {
   return (email || 'unknown').replace(/[@.]/g, '_')
 }
-
-/**
- * Reject uploads whose filename does not start with the safe version of
- * the session user's email. The /api/storage/upload route generates
- * filenames like `<safeEmail>_<timestamp>_<random>.ext`, so a filename
- * whose prefix is the caller's own email is the only one the caller
- * legitimately owns. This closes an IDOR: a user used to be able to
- * pass any athlete's email here and have their uploaded file linked to
- * the other athlete's record.
- *
- * Throws if the filename is not a string, contains path traversal, or
- * does not start with `<safeEmail>_`.
- */
-export function assertFilenameOwnership(
-  userEmail: string | null | undefined,
-  filename: unknown,
-  kind: 'receipt' | 'cert',
-): asserts filename is string {
-  if (typeof filename !== 'string' || filename.length === 0) {
-    throw new Error(`Invalid ${kind} filename: must be a non-empty string`)
-  }
-  if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
-    throw new Error(`Invalid ${kind} filename: path traversal not allowed`)
-  }
-  const expectedPrefix = `${safeEmailForFilename(userEmail)}_`
-  if (!filename.startsWith(expectedPrefix)) {
-    throw new Error(`Forbidden: ${kind} filename does not match session user`)
   }
 }
 
