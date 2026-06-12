@@ -53,6 +53,36 @@ function setupChain(overrides: Record<string, any> = {}) {
   return chain
 }
 
+/**
+ * Like setupChain, but mockFrom routes by table name so different
+ * .from('tableA') and .from('tableB') calls can return different
+ * chains. Use this when the function under test touches more than one
+ * table and each table needs its own canned response.
+ */
+function setupFromByTable(
+  tables: Record<string, Record<string, any> | ((overrides: Record<string, any>) => Record<string, any>)>,
+) {
+  const chains: Record<string, Record<string, any>> = {}
+  for (const [table, overridesOrFn] of Object.entries(tables)) {
+    const defaults = {
+      select: mockSelect.mockReturnThis(),
+      eq: mockEq.mockReturnThis(),
+      maybeSingle: mockMaybeSingle.mockResolvedValue({ data: null, error: null }),
+      limit: mockLimit.mockReturnThis(),
+      gte: mockGte.mockReturnThis(),
+      lte: mockLte.mockReturnThis(),
+      insert: mockInsert.mockResolvedValue({ data: null, error: null }),
+      update: mockUpdate.mockReturnThis(),
+      single: mockSingle.mockResolvedValue({ data: null, error: null }),
+    }
+    chains[table] = typeof overridesOrFn === 'function'
+      ? (overridesOrFn as (o: Record<string, any>) => Record<string, any>)(defaults)
+      : { ...defaults, ...overridesOrFn }
+  }
+  mockFrom.mockImplementation((table: string) => chains[table] ?? chains['__default__'] ?? chains[Object.keys(chains)[0]])
+  return chains
+}
+
 describe('checkDuplicatePayment (via addPaymentRecord)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -193,22 +223,79 @@ describe('approvePaymentAsync', () => {
     vi.clearAllMocks()
   })
 
+  function setupApprovePaymentMocks(opts: { athleteUserId: string | null } = { athleteUserId: 'user-123' }) {
+    // Routes mockFrom by table name. approvePaymentAsync hits:
+    //   - athletes        (admin check + user_id lookup + status update)
+    //   - payments        (addPaymentRecord -> checkDuplicatePayment + insert)
+    //   - activity_logs   (logActivityAsync)
+    //   - notifications   (createNotification)
+    // Each table gets its own chain with the responses it needs.
+    // All chains share the top-level mockInsert / mockUpdate so the
+    // test can assert on those in aggregate.
+    //
+    // The athletes chain differentiates queries by which columns were
+    // asked for in .select(): `role` is the requireAdmin check,
+    // `user_id` is the user_id lookup. Returning the right shape per
+    // .select() arg keeps the test deterministic without call counters.
+    const athletesChain: Record<string, any> = {
+      select: vi.fn().mockImplementation((cols?: string) => {
+        ;(athletesChain as any).__lastSelect = cols ?? ''
+        return athletesChain
+      }),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockImplementation(async () => {
+        const last = (athletesChain as any).__lastSelect as string
+        if (last.includes('role')) {
+          return { data: { role: 'admin' }, error: null }
+        }
+        if (last.includes('user_id')) {
+          return { data: { user_id: opts.athleteUserId }, error: null }
+        }
+        return { data: null, error: null }
+      }),
+      update: mockUpdate.mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    }
+
+    const paymentsChain: Record<string, any> = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      insert: mockInsert.mockResolvedValue({ data: null, error: null }),
+    }
+
+    const activityChain: Record<string, any> = {
+      insert: mockInsert.mockResolvedValue({ data: null, error: null }),
+    }
+
+    const notifChain: Record<string, any> = {
+      insert: mockInsert.mockResolvedValue({ data: null, error: null }),
+    }
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'athletes') return athletesChain
+      if (table === 'payments') return paymentsChain
+      if (table === 'activity_logs') return activityChain
+      if (table === 'notifications') return notifChain
+      return paymentsChain
+    })
+
+    return { athletesChain, paymentsChain, activityChain, notifChain }
+  }
+
   it('complete flow: updates athlete + adds payment + logs + notifies', async () => {
     vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
       user: { id: 'admin-id', email: 'test@test.com' },
     })
 
-    const chain = setupChain()
-    chain.maybeSingle.mockImplementation(async () => ({ data: { role: 'admin', user_id: 'user-123', name: 'Juan' }, error: null }))
-    chain.update.mockReturnThis()
-    chain.eq.mockReturnThis()
-    chain.select.mockReturnThis()
-    chain.single.mockResolvedValue({ data: {}, error: null })
-    chain.insert.mockResolvedValue({ data: null, error: null })
+    setupApprovePaymentMocks({ athleteUserId: 'user-123' })
 
     const { approvePaymentAsync } = await import('@/lib/db')
-    await approvePaymentAsync('test@test.com', 'Juan Perez', 17000, 'Transferencia')
-
+    const result = await approvePaymentAsync('test@test.com', 'Juan Perez', 17000, 'Transferencia')
+    expect(result.success).toBe(true)
     expect(mockInsert).toHaveBeenCalled()
   })
 
@@ -217,22 +304,34 @@ describe('approvePaymentAsync', () => {
       user: { id: 'admin-id', email: 'test@test.com' },
     })
 
-    const chain = setupChain()
-    chain.maybeSingle.mockImplementation(async () => ({ data: { role: 'admin', user_id: 'user-123', name: 'Juan' }, error: null }))
-    chain.update.mockReturnThis()
-    chain.eq.mockReturnThis()
-    chain.select.mockReturnThis()
-    chain.single.mockResolvedValue({ data: {}, error: null })
-    chain.insert.mockResolvedValue({ data: null, error: null })
+    setupApprovePaymentMocks({ athleteUserId: 'user-123' })
 
     const { approvePaymentAsync } = await import('@/lib/db')
-    await approvePaymentAsync('test@test.com', 'Juan', 17000, 'Transferencia')
+    const result = await approvePaymentAsync('test@test.com', 'Juan', 17000, 'Transferencia')
+    expect(result.success).toBe(true)
 
     const insertCalls = mockInsert.mock.calls
     const notificationCall = insertCalls.find(
       (call: any[]) => call[0] && 'user_id' in call[0] && 'title' in call[0]
     )
     expect(notificationCall).toBeTruthy()
+  })
+
+  it('does not notify when athlete has no user_id (orphan athlete record)', async () => {
+    vi.mocked(await import('@/lib/auth')).auth.api.getSession = vi.fn().mockResolvedValue({
+      user: { id: 'admin-id', email: 'test@test.com' },
+    })
+
+    setupApprovePaymentMocks({ athleteUserId: null })
+
+    const { approvePaymentAsync } = await import('@/lib/db')
+    await approvePaymentAsync('orphan@example.com', 'Orphan', 17000, 'Transferencia')
+
+    const insertCalls = mockInsert.mock.calls
+    const notificationCall = insertCalls.find(
+      (call: any[]) => call[0] && 'user_id' in call[0] && 'title' in call[0]
+    )
+    expect(notificationCall).toBeUndefined()
   })
 })
 
