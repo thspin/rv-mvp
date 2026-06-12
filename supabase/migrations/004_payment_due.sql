@@ -11,13 +11,17 @@ ALTER TABLE athletes
 
 -- Idempotency log: one row per (athlete, reminder_type, calendar day).
 -- The cron can be re-run safely without spamming notifications.
+-- (UNIQUE constraint with expression must be a separate INDEX in Postgres —
+--  functional expressions are not allowed in inline UNIQUE constraints.)
 CREATE TABLE IF NOT EXISTS payment_reminder_log (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   athlete_id    UUID NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
   reminder_type TEXT NOT NULL,
-  sent_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (athlete_id, reminder_type, (sent_at::date))
+  sent_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_reminder_log_daily
+  ON payment_reminder_log (athlete_id, reminder_type, ((sent_at AT TIME ZONE 'UTC')::date));
 
 CREATE INDEX IF NOT EXISTS idx_payment_reminder_log_athlete
   ON payment_reminder_log (athlete_id);

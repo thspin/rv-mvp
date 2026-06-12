@@ -223,15 +223,18 @@ ON CONFLICT (key) DO NOTHING;
 
 -- ============================================================================
 -- 9. payment_reminder_log (idempotency for daily payment cron)
--- UNIQUE(athlete_id, reminder_type, sent_at::date) previene duplicados.
+-- Idempotencia via UNIQUE INDEX con expresion (Postgres no permite expresiones
+-- en UNIQUE inline; hay que crearlo como index separado).
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS payment_reminder_log (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     athlete_id    UUID NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
     reminder_type TEXT NOT NULL,
-    sent_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (athlete_id, reminder_type, (sent_at::date))
+    sent_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_reminder_log_daily
+    ON payment_reminder_log (athlete_id, reminder_type, ((sent_at AT TIME ZONE 'UTC')::date));
 
 CREATE INDEX IF NOT EXISTS idx_payment_reminder_log_athlete
     ON payment_reminder_log (athlete_id);
